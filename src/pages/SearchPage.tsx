@@ -50,6 +50,7 @@ export function SearchPage() {
     searchHistory,
     addSearchQuery,
     clearSearchHistory,
+    removeSearchQuery,
     setQueue,
     setPlaying,
     currentTrack,
@@ -257,8 +258,12 @@ export function SearchPage() {
                     </div>
 
                     <button
-                      onClick={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        removeSearchQuery(item)
+                      }}
                       className="text-white/55"
+                      aria-label="Remove recent search"
                     >
                       <X size={30} />
                     </button>

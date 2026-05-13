@@ -41,6 +41,7 @@ interface PlayerState {
   setAutoplay: (enabled: boolean) => void
   addSearchQuery: (query: string) => void
   clearSearchHistory: () => void
+  removeSearchQuery: (query: string) => void
   incrementPlayCount: (trackId: string) => void
   setFullPlayerOpen: (open: boolean) => void
   toggleLikeCurrentTrack: () => void
@@ -204,6 +205,14 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       clearSearchHistory: () => set({ searchHistory: [], recentSearchItems: [] }),
+
+      removeSearchQuery: (query) => {
+        const clean = query.trim()
+        if (!clean) return
+        set({
+          searchHistory: get().searchHistory.filter((item) => item !== clean),
+        })
+      },
 
       incrementPlayCount: (trackId) => {
         if (!trackId) return
