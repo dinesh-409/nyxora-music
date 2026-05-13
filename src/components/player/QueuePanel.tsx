@@ -29,14 +29,18 @@ function toast(message: string) {
   window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: message }))
 }
 
-function createQueueItem(track: Track, sourceType: 'queued' | 'recommended' = 'queued'): QueueDisplayItem {
+function createQueueItem(
+  track: Track,
+  sourceType: 'queued' | 'recommended' = 'queued',
+  index = 0,
+): QueueDisplayItem {
   const existing = track as Track & { queueItemId?: string; sourceType?: 'queued' | 'recommended' }
 
   return {
     ...track,
     queueItemId:
       existing.queueItemId ||
-      `${sourceType}-${track.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      `${sourceType}-${track.id}-${track.videoId || 'no-video'}-${index}`,
     sourceType,
   }
 }
@@ -135,7 +139,8 @@ function SortableQueueRow({
         </button>
       ) : (
         <button
-          className="touch-none rounded-md p-2 text-white/90 active:bg-white/10"
+          className="cursor-grab touch-none select-none rounded-md p-2 text-white/90 active:cursor-grabbing active:bg-white/10"
+          style={{ touchAction: 'none' }}
           aria-label="Press and hold to reorder"
           {...attributes}
           {...listeners}
@@ -177,8 +182,9 @@ export function QueuePanel() {
   }, [currentTrack?.id, playbackQueue.length, state.recommendedTracks?.length])
 
   const displayItems: QueueDisplayItem[] = useMemo(() => {
-    const queuedItems = queuedTracks.map((track) => ({
+    const queuedItems: QueueDisplayItem[] = queuedTracks.map((track, index) => ({
       ...track,
+      queueItemId: track.queueItemId || `queued-${track.id}-${track.videoId || 'no-video'}-${index}`,
       sourceType: 'queued' as const,
     }))
 
@@ -186,11 +192,11 @@ export function QueuePanel() {
       queuedItems.map((track) => `${track.id}-${track.videoId ?? ''}`),
     )
 
-    const recommendedItems = recommendedTracks
+    const recommendedItems: QueueDisplayItem[] = recommendedTracks
       .filter((track) => !queuedKeys.has(`${track.id}-${track.videoId ?? ''}`))
-      .map((track) => createQueueItem(track, 'recommended'))
+      .map((track, index) => createQueueItem(track, 'recommended', index))
 
-    return [...queuedItems, ...recommendedItems]
+    return [...queuedItems, ...recommendedItems].filter((item) => Boolean(item.queueItemId))
   }, [queuedTracks, recommendedTracks])
 
   const sensors = useSensors(
@@ -405,7 +411,7 @@ export function QueuePanel() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={displayItems.map((item) => item.queueItemId)}
+                items={displayItems.map((item) => String(item.queueItemId))}
                 strategy={verticalListSortingStrategy}
               >
                 {displayItems.map((item, index) => (
