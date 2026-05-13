@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Pause, Play, SkipForward, Heart, SkipBack } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Heart, Pause, Play } from 'lucide-react'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 
 export function MiniPlayer() {
   const [miniLiked, setMiniLiked] = useState(false)
+  const swipeStartX = useRef<number | null>(null)
 const {
     currentTrack,
 isPlaying,
@@ -53,24 +54,38 @@ setFullPlayerOpen,
           className="h-12 w-12 rounded-xl object-cover"
         />
 
-        <div className="min-w-0 flex-1">
+        <div
+            className="min-w-0 flex-1"
+            onTouchStart={(event) => {
+              swipeStartX.current = event.touches[0]?.clientX ?? null
+            }}
+            onTouchEnd={(event) => {
+              const start = swipeStartX.current
+              const end = event.changedTouches[0]?.clientX ?? null
+
+              swipeStartX.current = null
+
+              if (start === null || end === null) return
+
+              const diff = end - start
+
+              if (Math.abs(diff) < 45) return
+
+              event.stopPropagation()
+
+              if (diff > 0) {
+                usePlayerStore.getState().previousTrack()
+              } else {
+                nextTrack()
+              }
+            }}
+          >
           <p className="truncate text-sm font-bold">{currentTrack.title}</p>
           <p className="truncate text-xs text-white/55">
             {isLoading ? 'Loading...' : currentTrack.artist}
           </p>
         </div>
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              usePlayerStore.getState().previousTrack()
-            }}
-            className="rounded-full bg-white/10 p-2 text-white active:bg-white/20"
-            aria-label="Previous song"
-          >
-            <SkipBack size={18} fill="currentColor" />
-          </button>
-
-          <button
+<button
             onClick={(event) => {
               event.stopPropagation()
               setMiniLiked((value: boolean) => !value)
@@ -99,17 +114,7 @@ setFullPlayerOpen,
         >
           {isPlaying ? <Pause size={18} fill="black" /> : <Play size={18} fill="black" />}
         </button>
-
-        <button
-          onClick={(event) => {
-            event.stopPropagation()
-            nextTrack()
-          }}
-          className="rounded-full bg-white/10 p-2 text-white"
-        >
-          <SkipForward size={18} />
-        </button>
-      </button>
+</button>
     </div>
   )
 }
