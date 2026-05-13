@@ -26,6 +26,7 @@ interface PlayerState {
   likedTrackIds: string[]
   isFullPlayerOpen: boolean
   sleepTimerMinutes: number | null
+  isQueueOpen: boolean
 
   setCurrentTrack: (track: Track | null, playingFromTitle?: string) => void
   setQueue: (queue: Track[], startIndex?: number, playingFromTitle?: string) => void
@@ -48,6 +49,10 @@ interface PlayerState {
   toggleLikeCurrentTrack: () => void
   addCurrentTrackToQueue: () => void
   setSleepTimer: (minutes: number | null) => void
+  setQueueOpen: (open: boolean) => void
+  playQueueIndex: (index: number) => void
+  clearQueue: () => void
+  removeQueueItem: (index: number) => void
   adjustLyricsOffset: (amount: number) => void
   resetLyricsOffset: () => void
   applySavedLyricsOffset: (trackId: string) => void
@@ -79,6 +84,7 @@ export const usePlayerStore = create<PlayerState>()(
       likedTrackIds: [],
       isFullPlayerOpen: false,
       sleepTimerMinutes: null,
+      isQueueOpen: false,
 
       setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
         set({
@@ -249,6 +255,56 @@ export const usePlayerStore = create<PlayerState>()(
 
       setSleepTimer: (minutes) => set({ sleepTimerMinutes: minutes }),
 
+      setQueueOpen: (open) => set({ isQueueOpen: open }),
+
+      playQueueIndex: (index) => {
+        const queue = get().queue
+        const track = queue[index]
+
+        if (!track) return
+
+        set({
+          currentIndex: index,
+          currentTrack: track,
+          currentTime: 0,
+          lyricsOffset: get().savedLyricsOffsets[track.id] ?? 0,
+          isPlaying: true,
+          isLoading: true,
+        })
+      },
+
+      clearQueue: () => {
+        const current = get().currentTrack
+        set({
+          queue: current ? [current] : [],
+          currentIndex: current ? 0 : -1,
+        })
+      },
+
+      removeQueueItem: (index) => {
+        const state = get()
+        const nextQueue = state.queue.filter((_, itemIndex) => itemIndex !== index)
+
+        let nextIndex = state.currentIndex
+        if (index < state.currentIndex) nextIndex -= 1
+        if (index === state.currentIndex) {
+          const fallback = nextQueue[index] ?? nextQueue[index - 1] ?? null
+          set({
+            queue: nextQueue,
+            currentIndex: fallback ? Math.max(0, Math.min(index, nextQueue.length - 1)) : -1,
+            currentTrack: fallback,
+            isPlaying: Boolean(fallback),
+            currentTime: 0,
+          })
+          return
+        }
+
+        set({
+          queue: nextQueue,
+          currentIndex: nextIndex,
+        })
+      },
+
       adjustLyricsOffset: (amount) => {
         const current = get().lyricsOffset
         const next = Math.max(-30, Math.min(30, Number((current + amount).toFixed(2))))
@@ -298,6 +354,7 @@ export const usePlayerStore = create<PlayerState>()(
         recentSearchItems: state.recentSearchItems,
         likedTrackIds: state.likedTrackIds,
         sleepTimerMinutes: state.sleepTimerMinutes,
+        isQueueOpen: state.isQueueOpen,
         savedLyricsOffsets: state.savedLyricsOffsets,
       }),
     },

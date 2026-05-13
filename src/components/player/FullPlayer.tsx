@@ -54,17 +54,32 @@ interface PlayerMenuProps {
   onShare: () => void
   onAddToQueue: () => void
   onSleepTimer: () => void
+  onGoToQueue: () => void
+  onAddToPlaylist: () => void
+  onGoToArtist: () => void
+  onGoToAlbum: () => void
+  onExclude: () => void
 }
 
-function PlayerMenu({ onClose, onShare, onAddToQueue, onSleepTimer }: PlayerMenuProps) {
+function PlayerMenu({
+  onClose,
+  onShare,
+  onAddToQueue,
+  onSleepTimer,
+  onGoToQueue,
+  onAddToPlaylist,
+  onGoToArtist,
+  onGoToAlbum,
+  onExclude,
+}: PlayerMenuProps) {
   const items = [
     { icon: Share2, label: 'Share', action: onShare },
-    { icon: CirclePlus, label: 'Add to playlist', action: onClose },
+    { icon: CirclePlus, label: 'Add to playlist', action: onAddToPlaylist },
     { icon: ListMusic, label: 'Add to Queue', action: onAddToQueue },
-    { icon: ListMusic, label: 'Go to Queue', action: onClose },
-    { icon: Disc3, label: 'Go to album', action: onClose },
-    { icon: UserRound, label: 'Go to artist', action: onClose },
-    { divider: true, icon: MinusCircle, label: 'Exclude track from your taste profile', action: onClose },
+    { icon: ListMusic, label: 'Go to Queue', action: onGoToQueue },
+    { icon: Disc3, label: 'Go to album', action: onGoToAlbum },
+    { icon: UserRound, label: 'Go to artist', action: onGoToArtist },
+    { divider: true, icon: MinusCircle, label: 'Exclude track from your taste profile', action: onExclude },
     { icon: Clock3, label: 'Sleep timer', action: onSleepTimer },
   ]
 
@@ -127,6 +142,7 @@ export function FullPlayer() {
     toggleLikeCurrentTrack,
     addCurrentTrackToQueue,
     setSleepTimer,
+    setQueueOpen,
   } = usePlayerStore()
 
   const liked = currentTrack?.id ? likedTrackIds.includes(currentTrack.id) : false
@@ -217,6 +233,31 @@ export function FullPlayer() {
     setMenuOpen(false)
   }
 
+  function openQueue() {
+    setQueueOpen(true)
+    setMenuOpen(false)
+  }
+
+  function addToPlaylist() {
+    setToast('Playlist saving needs login / playlist system')
+    setMenuOpen(false)
+  }
+
+  function goToArtist() {
+    setToast('Artist page coming next')
+    setMenuOpen(false)
+  }
+
+  function goToAlbum() {
+    setToast('Album page coming next')
+    setMenuOpen(false)
+  }
+
+  function excludeFromTaste() {
+    setToast('Excluded from taste profile locally')
+    setMenuOpen(false)
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#050507] text-white">
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-[#050507] px-4 pb-8 pt-4">
@@ -266,6 +307,11 @@ export function FullPlayer() {
                 setSleepOpen(true)
                 setMenuOpen(false)
               }}
+              onGoToQueue={openQueue}
+              onAddToPlaylist={addToPlaylist}
+              onGoToArtist={goToArtist}
+              onGoToAlbum={goToAlbum}
+              onExclude={excludeFromTaste}
             />
           )}
 
@@ -404,7 +450,7 @@ export function FullPlayer() {
                 <Share2 size={26} />
               </button>
               <button
-                onClick={addQueue}
+                onClick={openQueue}
                 className="flex h-12 w-12 items-center justify-center rounded-full active:bg-white/10"
               >
                 <ListMusic size={29} />

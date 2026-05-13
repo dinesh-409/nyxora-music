@@ -3,6 +3,7 @@ import { ErrorBoundary } from '../common/ErrorBoundary'
 import { BottomNav } from './BottomNav'
 import { MiniPlayer } from '../player/MiniPlayer'
 import { FullPlayer } from '../player/FullPlayer'
+import { QueuePanel } from '../player/QueuePanel'
 import { usePlayerStore } from '../../store/player-store'
 
 interface MobileShellProps {
@@ -32,6 +33,10 @@ export function MobileShell({ children, activeTab, onTabChange }: MobileShellPro
             <FullPlayer />
           </ErrorBoundary>
         )}
+
+        <ErrorBoundary fallbackTitle="Queue crashed safely">
+          <QueuePanel />
+        </ErrorBoundary>
       </section>
     </main>
   )
