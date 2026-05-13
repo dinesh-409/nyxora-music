@@ -190,10 +190,24 @@ export function QueuePanel() {
   }, [currentTrack?.id, playbackQueue.length, state.recommendedTracks?.length])
 
   const displayItems: QueueDisplayItem[] = useMemo(() => {
+    const savedDisplayItems = (state.queueDisplayItems ?? []) as QueueDisplayItem[]
+
+    if (savedDisplayItems.length > 0) {
+      return savedDisplayItems
+        .map((item, index) => ({
+          ...item,
+          queueItemId:
+            item.queueItemId ||
+            `${item.sourceType ?? 'recommended'}-${item.id}-${item.videoId || 'no-video'}-${index}`,
+          sourceType: item.sourceType ?? 'recommended',
+        }))
+        .filter((item) => Boolean(item.queueItemId))
+    }
+
     const queuedItems: QueueDisplayItem[] = queuedTracks.map((track, index) => ({
       ...track,
       queueItemId: track.queueItemId || `queued-${track.id}-${track.videoId || 'no-video'}-${index}`,
-      sourceType: track.sourceType ?? 'queued',
+      sourceType: 'queued' as const,
     }))
 
     const queuedKeys = new Set(
@@ -205,7 +219,7 @@ export function QueuePanel() {
       .map((track, index) => createQueueItem(track, 'recommended', index))
 
     return [...queuedItems, ...recommendedItems].filter((item) => Boolean(item.queueItemId))
-  }, [queuedTracks, recommendedTracks])
+  }, [queuedTracks, recommendedTracks, state.queueDisplayItems])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -228,19 +242,23 @@ export function QueuePanel() {
   if (!isQueueOpen) return null
 
   function syncDisplayItemsToQueue(items: QueueDisplayItem[]) {
-    const normalizedQueuedTracks = items.map((item) => ({
+    const normalizedDisplayItems = items.map((item) => ({
       ...cleanTrack(item),
       queueItemId: item.queueItemId,
       sourceType: item.sourceType,
     })) as QueueDisplayItem[]
 
+    const manualQueuedTracks = normalizedDisplayItems.filter(
+      (item) => item.sourceType === 'queued',
+    )
+
     usePlayerStore.setState({
-      queuedTracks: normalizedQueuedTracks,
+      queueDisplayItems: normalizedDisplayItems,
+      queuedTracks: manualQueuedTracks,
       queue: [
         ...(currentTrack ? [currentTrack] : []),
-        ...normalizedQueuedTracks.map((item) => cleanTrack(item)),
+        ...normalizedDisplayItems.map((item) => cleanTrack(item)),
       ],
-      recommendedTracks: [],
     })
   }
 
@@ -257,7 +275,7 @@ export function QueuePanel() {
   }
 
   function clearQueue() {
-    usePlayerStore.setState({ queuedTracks: [], recommendedTracks: [] })
+    usePlayerStore.setState({ queuedTracks: [], queueDisplayItems: [], recommendedTracks: [] })
     toast('Queue cleared')
   }
 

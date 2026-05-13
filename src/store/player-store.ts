@@ -21,6 +21,7 @@ interface PlayerState {
   queue: Track[]
   queuedTracks: QueuedTrack[]
   recommendedTracks: Track[]
+  queueDisplayItems: (QueuedTrack & { sourceType?: 'queued' | 'recommended' })[]
   currentIndex: number
   isPlaying: boolean
   isLoading: boolean
@@ -90,6 +91,7 @@ export const usePlayerStore = create<PlayerState>()(
       queue: [],
       queuedTracks: [],
       recommendedTracks: [],
+      queueDisplayItems: [],
       currentIndex: -1,
       isPlaying: false,
       isLoading: false,
@@ -427,6 +429,7 @@ export const usePlayerStore = create<PlayerState>()(
         isQueueEditMode: state.isQueueEditMode,
         queuedTracks: state.queuedTracks,
         recommendedTracks: state.recommendedTracks,
+        queueDisplayItems: state.queueDisplayItems,
         playerLoadKey: state.playerLoadKey,
         savedLyricsOffsets: state.savedLyricsOffsets,
       }),
