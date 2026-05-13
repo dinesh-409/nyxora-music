@@ -48,6 +48,7 @@ interface PlayerState {
   setFullPlayerOpen: (open: boolean) => void
   toggleLikeCurrentTrack: () => void
   addCurrentTrackToQueue: () => void
+  addTrackToQueue: (track: Track) => void
   setSleepTimer: (minutes: number | null) => void
   setQueueOpen: (open: boolean) => void
   playQueueIndex: (index: number) => void
@@ -250,7 +251,12 @@ export const usePlayerStore = create<PlayerState>()(
       addCurrentTrackToQueue: () => {
         const track = get().currentTrack
         if (!track) return
-        set({ queue: [...get().queue, track] })
+        set({ queue: [...get().queue, { ...track }] })
+      },
+
+      addTrackToQueue: (track) => {
+        if (!track?.id) return
+        set({ queue: [...get().queue, { ...track }] })
       },
 
       setSleepTimer: (minutes) => set({ sleepTimerMinutes: minutes }),

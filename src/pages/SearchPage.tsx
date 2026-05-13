@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownLeft,
   ArrowLeft,
+  ListPlus,
   Play,
   Search,
   X,
@@ -92,6 +93,7 @@ export function SearchPage() {
     removeSearchQuery,
     setQueue,
     setPlaying,
+    addTrackToQueue,
     currentTrack,
   } = usePlayerStore()
 
@@ -436,7 +438,19 @@ export function SearchPage() {
                               Song • {topSong.artist}
                             </p>
                           </div>
-                          <Play size={28} className="text-white/80" />
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                addTrackToQueue(topSong)
+                              }}
+                              className="rounded-full bg-white/10 p-3 text-white"
+                              aria-label="Add top result to queue"
+                            >
+                              <ListPlus size={22} />
+                            </button>
+                            <Play size={28} className="text-white/80" />
+                          </div>
                         </button>
                       </div>
                     )}
@@ -468,7 +482,19 @@ export function SearchPage() {
                                     Song • {track.artist}
                                   </p>
                                 </div>
-                                <Play size={24} className="text-white/75" />
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      addTrackToQueue(track)
+                                    }}
+                                    className="rounded-full bg-white/10 p-2 text-white"
+                                    aria-label="Add song to queue"
+                                  >
+                                    <ListPlus size={20} />
+                                  </button>
+                                  <Play size={24} className="text-white/75" />
+                                </div>
                               </button>
                             )
                           })}
