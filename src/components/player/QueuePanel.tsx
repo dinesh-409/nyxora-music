@@ -1,4 +1,20 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties, type TouchEvent } from 'react'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { ListMusic, Menu, Pause, Play, Repeat, Shuffle, Timer, X } from 'lucide-react'
 import { usePlayerStore, type QueuedTrack } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
@@ -9,8 +25,10 @@ function toast(message: string) {
   window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: message }))
 }
 
-function queueId(track: QueuedTrack) {
-  return track.queueItemId
+function cleanTrack(track: Track | QueuedTrack): Track {
+  const next = { ...track } as Track & { queueItemId?: string }
+  delete next.queueItemId
+  return next
 }
 
 function formatPlayingText(value?: string | null, currentTrack?: Track | null) {
@@ -23,35 +41,42 @@ function formatPlayingText(value?: string | null, currentTrack?: Track | null) {
   return currentTrack?.title ? `Playing ${currentTrack.title}` : 'Playing music'
 }
 
-function removeQueueItemAt(items: QueuedTrack[], index: number): QueuedTrack[] {
-  return items.filter((_, itemIndex) => itemIndex !== index)
-}
-
-function moveQueueItem(items: QueuedTrack[], from: number, to: number): QueuedTrack[] {
-  if (from < 0 || from >= items.length || to < 0 || to >= items.length) return items
-
-  const next = [...items]
-  const [moved] = next.splice(from, 1)
-  if (!moved) return items
-  next.splice(to, 0, moved)
-  return next
-}
-
-function QueuedRow({
+function SortableQueuedRow({
   track,
   editMode,
   onPlay,
   onRemove,
-  onMove,
 }: {
   track: QueuedTrack
   editMode: boolean
   onPlay: () => void
   onRemove: () => void
-  onMove: () => void
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: track.queueItemId,
+    disabled: editMode,
+  })
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 py-3 ${
+        isDragging ? 'z-50 scale-[1.02] rounded-2xl bg-white/10 px-2 shadow-2xl' : ''
+      }`}
+    >
       <SafeImage
         src={track.thumbnail}
         alt={track.title}
@@ -85,9 +110,10 @@ function QueuedRow({
         </button>
       ) : (
         <button
-          onClick={onMove}
-          className="rounded-md p-2 text-white/90 active:bg-white/10"
-          aria-label="Reorder song"
+          className="touch-none rounded-md p-2 text-white/90 active:bg-white/10"
+          aria-label="Press and hold to reorder"
+          {...attributes}
+          {...listeners}
         >
           <Menu size={31} />
         </button>
@@ -139,7 +165,6 @@ function RecommendedRow({
 
 export function QueuePanel() {
   const touchStartY = useRef<number | null>(null)
-
   const state = usePlayerStore() as any
 
   const currentTrack = state.currentTrack as Track | null
@@ -147,21 +172,34 @@ export function QueuePanel() {
   const isQueueOpen = Boolean(state.isQueueOpen)
   const isQueueExpanded = Boolean(state.isQueueExpanded)
   const isQueueEditMode = Boolean(state.isQueueEditMode)
-  const queuedTracks = ((state.queuedTracks ?? []) as QueuedTrack[]).filter((item) => Boolean(item.queueItemId))
-  const queue = (state.queue ?? []) as Track[]
   const playingFromTitle = state.playingFromTitle as string | null | undefined
   const repeatMode = state.repeatMode ?? 'off'
   const shuffleMode = state.shuffleMode ?? 'off'
+
+  const queuedTracks = ((state.queuedTracks ?? []) as QueuedTrack[]).filter((item) =>
+    Boolean(item.queueItemId),
+  )
+
+  const playbackQueue = (state.queue ?? []) as Track[]
 
   const recommended = useMemo(() => {
     try {
       const saved = (state.recommendedTracks ?? []) as Track[]
       if (saved.length) return saved
-      return getRecommendedQueue(currentTrack, queue)
+      return getRecommendedQueue(currentTrack, playbackQueue)
     } catch {
       return []
     }
-  }, [currentTrack?.id, queue.length, state.recommendedTracks?.length])
+  }, [currentTrack?.id, playbackQueue.length, state.recommendedTracks?.length])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 140, tolerance: 6 },
+    }),
+  )
 
   useEffect(() => {
     function openQueue() {
@@ -192,50 +230,99 @@ export function QueuePanel() {
   }
 
   function addToQueue(track: Track) {
-    if (state.addTrackToQueue) state.addTrackToQueue(track)
-    else {
+    if (state.addTrackToQueue) {
+      state.addTrackToQueue(track)
+    } else {
       const item: QueuedTrack = {
         ...track,
         queueItemId: `${track.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       }
       usePlayerStore.setState({ queuedTracks: [...queuedTracks, item] })
     }
+
     toast(`${track.title} added to queue`)
   }
 
-  function playTrack(track: Track) {
-    const cleanTrack = { ...track } as Track
+  function removeQueuedSong(index: number) {
+    usePlayerStore.setState({
+      queuedTracks: queuedTracks.filter((_, itemIndex) => itemIndex !== index),
+    })
+  }
+
+  function playQueuedSong(index: number) {
+    const selected = queuedTracks[index]
+    if (!selected) return
+
+    const selectedTrack = cleanTrack(selected)
+    const nextQueuedTracks = queuedTracks.filter((_, itemIndex) => itemIndex !== index)
+    const nextPlaybackQueue = [
+      selectedTrack,
+      ...nextQueuedTracks.map((track) => cleanTrack(track)),
+      ...recommended.filter((track) => track.id !== selectedTrack.id),
+    ]
 
     usePlayerStore.setState({
-      currentTrack: cleanTrack,
+      currentTrack: selectedTrack,
+      queuedTracks: nextQueuedTracks,
+      queue: nextPlaybackQueue,
+      currentIndex: 0,
       isPlaying: true,
       isLoading: true,
       currentTime: 0,
       playerLoadKey: (state.playerLoadKey ?? 0) + 1,
     })
+
+    toast(`Playing ${selectedTrack.title}`)
   }
 
-  function removeAt(index: number) {
+  function playRecommended(track: Track) {
+    const nextPlaybackQueue = [
+      track,
+      ...queuedTracks.map((item) => cleanTrack(item)),
+      ...recommended.filter((item) => item.id !== track.id),
+    ]
+
     usePlayerStore.setState({
-      queuedTracks: removeQueueItemAt(queuedTracks, index),
+      currentTrack: track,
+      queue: nextPlaybackQueue,
+      currentIndex: 0,
+      isPlaying: true,
+      isLoading: true,
+      currentTime: 0,
+      playerLoadKey: (state.playerLoadKey ?? 0) + 1,
     })
+
+    toast(`Playing ${track.title}`)
   }
 
-  function moveAt(index: number) {
-    if (queuedTracks.length <= 1) return
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-    const target = index === 0 ? 1 : index - 1
+    const oldIndex = queuedTracks.findIndex((item) => item.queueItemId === active.id)
+    const newIndex = queuedTracks.findIndex((item) => item.queueItemId === over.id)
+
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const reordered = arrayMove(queuedTracks, oldIndex, newIndex)
+
     usePlayerStore.setState({
-      queuedTracks: moveQueueItem(queuedTracks, index, target),
+      queuedTracks: reordered,
+      queue: [
+        ...(currentTrack ? [currentTrack] : []),
+        ...reordered.map((item) => cleanTrack(item)),
+        ...recommended,
+      ],
     })
+
     toast('Queue order updated')
   }
 
-  function onHandleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+  function onHandleTouchStart(event: TouchEvent<HTMLDivElement>) {
     touchStartY.current = event.touches[0].clientY
   }
 
-  function onHandleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+  function onHandleTouchEnd(event: TouchEvent<HTMLDivElement>) {
     if (touchStartY.current == null) return
 
     const diff = touchStartY.current - event.changedTouches[0].clientY
@@ -299,7 +386,10 @@ export function QueuePanel() {
 
         <div className="px-5 pt-3">
           <p className="text-[15px] font-bold text-white/90">
-            About <span className="font-normal text-white/65">recommendations and the impact of promotion</span>
+            About{' '}
+            <span className="font-normal text-white/65">
+              recommendations and the impact of promotion
+            </span>
           </p>
         </div>
 
@@ -331,26 +421,35 @@ export function QueuePanel() {
         )}
 
         <section className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
-          {queuedTracks.map((track, index) => (
-            <QueuedRow
-              key={queueId(track)}
-              track={track}
-              editMode={isQueueEditMode}
-              onPlay={() => playTrack(track)}
-              onRemove={() => removeAt(index)}
-              onMove={() => moveAt(index)}
-            />
-          ))}
+          {queuedTracks.length > 0 && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={queuedTracks.map((track) => track.queueItemId)}
+                strategy={verticalListSortingStrategy}
+              >
+                {queuedTracks.map((track, index) => (
+                  <SortableQueuedRow
+                    key={track.queueItemId}
+                    track={track}
+                    editMode={isQueueEditMode}
+                    onPlay={() => playQueuedSong(index)}
+                    onRemove={() => removeQueuedSong(index)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
 
           {recommended.map((track) => (
             <RecommendedRow
               key={`rec-${track.id}-${track.videoId}`}
               track={track}
               onAdd={() => addToQueue(track)}
-              onPlay={() => {
-                addToQueue(track)
-                playTrack(track)
-              }}
+              onPlay={() => playRecommended(track)}
             />
           ))}
         </section>
@@ -359,7 +458,7 @@ export function QueuePanel() {
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => {
-                if (state.toggleShuffle) state.toggleShuffle()
+                state.toggleShuffle?.()
                 toast(shuffleMode === 'off' ? 'Shuffle on' : 'Shuffle off')
               }}
               className={`rounded-2xl py-4 text-center font-semibold active:scale-95 ${
