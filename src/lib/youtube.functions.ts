@@ -7,6 +7,60 @@ import { rankTracks } from './search-ranker'
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
 const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY as string | undefined
 
+function parseYouTubeDuration(duration: string): number {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return 0
+
+  const hours = Number(match[1] ?? 0)
+  const minutes = Number(match[2] ?? 0)
+  const seconds = Number(match[3] ?? 0)
+
+  return hours * 3600 + minutes * 60 + seconds
+}
+
+async function enrichTracksWithDurations(tracks: Track[]): Promise<Track[]> {
+  if (!tracks.length || !YOUTUBE_API_KEY) return tracks
+
+  const ids = tracks.map((track) => track.videoId).filter(Boolean).slice(0, 50)
+  if (!ids.length) return tracks
+
+  const url = new URL(`${YOUTUBE_API_BASE}/videos`)
+  url.searchParams.set('part', 'contentDetails')
+  url.searchParams.set('id', ids.join(','))
+  url.searchParams.set('key', YOUTUBE_API_KEY)
+
+  try {
+    const response = await fetch(url.toString())
+    if (!response.ok) return tracks
+
+    const data = (await response.json()) as {
+      items?: Array<{
+        id: string
+        contentDetails?: {
+          duration?: string
+        }
+      }>
+    }
+
+    const durationMap = new Map<string, number>()
+
+    data.items?.forEach((item) => {
+      const duration = item.contentDetails?.duration
+      if (duration) {
+        durationMap.set(item.id, parseYouTubeDuration(duration))
+      }
+    })
+
+    return tracks.map((track) => ({
+      ...track,
+      duration: track.videoId ? durationMap.get(track.videoId) ?? track.duration : track.duration,
+    }))
+  } catch (error) {
+    console.warn('YouTube duration enrichment failed safely:', error)
+    return tracks
+  }
+}
+
 function getBestThumbnail(thumbnails: YouTubeSearchItem['snippet']['thumbnails']): string {
   return (
     thumbnails?.maxres?.url ||
@@ -87,7 +141,8 @@ export async function searchYouTubeSongs(
       ?.map((item) => mapSearchItemToTrack(item, detectedLanguage))
       .filter((item): item is Track => item !== null) ?? []
 
-  return rankTracks(tracks, clean, detectedLanguage, preferredLanguages, followedArtists)
+  const enrichedTracks = await enrichTracksWithDurations(tracks)
+  return rankTracks(enrichedTracks, clean, detectedLanguage, preferredLanguages, followedArtists)
 }
 
 export interface YouTubePlaylistSummary {
@@ -188,5 +243,5 @@ export async function fetchYouTubePlaylistItems(playlistId: string): Promise<Tra
       })
       .filter((item): item is Track => item !== null) ?? []
 
-  return tracks
+  return enrichTracksWithDurations(tracks)
 }

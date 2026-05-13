@@ -4,6 +4,7 @@ import type { RepeatMode, SeekSource, ShuffleMode, Track } from '../types/music'
 
 interface PlayerState {
   currentTrack: Track | null
+  playingFromTitle: string
   queue: Track[]
   currentIndex: number
   isPlaying: boolean
@@ -23,8 +24,9 @@ interface PlayerState {
   recentSearchItems: Track[]
   isFullPlayerOpen: boolean
 
-  setCurrentTrack: (track: Track | null) => void
-  setQueue: (queue: Track[], startIndex?: number) => void
+  setCurrentTrack: (track: Track | null, playingFromTitle?: string) => void
+  setQueue: (queue: Track[], startIndex?: number, playingFromTitle?: string) => void
+  setPlayingFromTitle: (title: string) => void
   setPlaying: (playing: boolean) => void
   setLoading: (loading: boolean) => void
   setCurrentTime: (time: number, source?: SeekSource) => void
@@ -47,6 +49,7 @@ export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
       currentTrack: null,
+      playingFromTitle: 'Nyxora Music',
       queue: [],
       currentIndex: -1,
       isPlaying: false,
@@ -66,15 +69,18 @@ export const usePlayerStore = create<PlayerState>()(
       recentSearchItems: [],
       isFullPlayerOpen: false,
 
-      setCurrentTrack: (track) =>
+      setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
         set({
           currentTrack: track,
+          playingFromTitle,
           currentTime: 0,
           lyricsOffset: 0,
           isLoading: Boolean(track),
         }),
 
-      setQueue: (queue, startIndex = 0) => {
+      setPlayingFromTitle: (title) => set({ playingFromTitle: title || 'Nyxora Music' }),
+
+      setQueue: (queue, startIndex = 0, playingFromTitle = 'Nyxora Music') => {
         const safeQueue = Array.isArray(queue) ? queue.filter(Boolean) : []
         const safeIndex = safeQueue[startIndex] ? startIndex : safeQueue.length ? 0 : -1
 
@@ -82,6 +88,7 @@ export const usePlayerStore = create<PlayerState>()(
           queue: safeQueue,
           currentIndex: safeIndex,
           currentTrack: safeIndex >= 0 ? safeQueue[safeIndex] : null,
+          playingFromTitle,
           currentTime: 0,
           lyricsOffset: 0,
           isLoading: safeIndex >= 0,
@@ -211,6 +218,7 @@ export const usePlayerStore = create<PlayerState>()(
       name: 'nyxora-player-store',
       partialize: (state) => ({
         currentTrack: state.currentTrack,
+        playingFromTitle: state.playingFromTitle,
         queue: state.queue,
         currentIndex: state.currentIndex,
         repeatMode: state.repeatMode,

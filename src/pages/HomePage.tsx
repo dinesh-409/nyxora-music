@@ -52,7 +52,7 @@ export function HomePage() {
   const setPlaying = usePlayerStore((state) => state.setPlaying)
 
   const playGuestPicks = () => {
-    setQueue(demoTracks, 0)
+    setQueue(demoTracks, 0, 'Guest Picks')
     setPlaying(true)
   }
 

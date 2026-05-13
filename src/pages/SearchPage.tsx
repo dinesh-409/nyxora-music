@@ -60,7 +60,7 @@ export function SearchPage() {
 
   function playSong(track: Track, index: number) {
     const queue = songs.length ? songs : [track]
-    setQueue(queue, index)
+    setQueue(queue, index, `Search: ${query.trim() || track.title}`)
     setPlaying(true)
   }
 
@@ -75,7 +75,7 @@ export function SearchPage() {
         return
       }
 
-      setQueue(tracks, 0)
+      setQueue(tracks, 0, playlist.title)
       setPlaying(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not open playlist'
