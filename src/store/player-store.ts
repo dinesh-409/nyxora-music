@@ -16,6 +16,7 @@ interface PlayerState {
   shuffleMode: ShuffleMode
   autoplay: boolean
   seekSource: SeekSource
+  lyricsOffset: number
   playCounts: Record<string, number>
   playlistOpens: Record<string, number>
   searchHistory: string[]
@@ -38,6 +39,8 @@ interface PlayerState {
   clearSearchHistory: () => void
   incrementPlayCount: (trackId: string) => void
   setFullPlayerOpen: (open: boolean) => void
+  adjustLyricsOffset: (amount: number) => void
+  resetLyricsOffset: () => void
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -56,6 +59,7 @@ export const usePlayerStore = create<PlayerState>()(
       shuffleMode: 'off',
       autoplay: true,
       seekSource: 'player-control',
+      lyricsOffset: 0,
       playCounts: {},
       playlistOpens: {},
       searchHistory: [],
@@ -66,6 +70,7 @@ export const usePlayerStore = create<PlayerState>()(
         set({
           currentTrack: track,
           currentTime: 0,
+          lyricsOffset: 0,
           isLoading: Boolean(track),
         }),
 
@@ -78,6 +83,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentIndex: safeIndex,
           currentTrack: safeIndex >= 0 ? safeQueue[safeIndex] : null,
           currentTime: 0,
+          lyricsOffset: 0,
           isLoading: safeIndex >= 0,
         })
       },
@@ -192,6 +198,14 @@ export const usePlayerStore = create<PlayerState>()(
       },
 
       setFullPlayerOpen: (open) => set({ isFullPlayerOpen: open }),
+
+      adjustLyricsOffset: (amount) => {
+        const current = get().lyricsOffset
+        const next = Math.max(-5, Math.min(5, Number((current + amount).toFixed(1))))
+        set({ lyricsOffset: next })
+      },
+
+      resetLyricsOffset: () => set({ lyricsOffset: 0 }),
     }),
     {
       name: 'nyxora-player-store',

@@ -22,6 +22,24 @@ interface LrclibTrack {
   plainLyrics?: string | null
 }
 
+const badVersionWords = [
+  'remix',
+  'live',
+  'cover',
+  'karaoke',
+  'instrumental',
+  'sped up',
+  'slowed',
+  'nightcore',
+  'acoustic',
+  'lofi',
+  'lo-fi',
+  '8d',
+  'edit',
+  'short',
+  'reverb',
+]
+
 const removePatterns = [
   /\(.*?official.*?\)/gi,
   /\[.*?official.*?\]/gi,
@@ -154,26 +172,45 @@ async function searchLrclib(query: string): Promise<LrclibTrack[]> {
 function scoreLyricsCandidate(item: LrclibTrack, title: string, artist: string, duration?: number): number {
   const itemTitle = (item.trackName ?? '').toLowerCase()
   const itemArtist = (item.artistName ?? '').toLowerCase()
+  const itemAlbum = (item.albumName ?? '').toLowerCase()
   const wantedTitle = title.toLowerCase()
   const wantedArtist = artist.toLowerCase()
+  const fullItemText = `${itemTitle} ${itemArtist} ${itemAlbum}`
 
   let score = 0
 
-  if (itemTitle === wantedTitle) score += 100
-  if (itemTitle.includes(wantedTitle) || wantedTitle.includes(itemTitle)) score += 55
+  if (itemTitle === wantedTitle) score += 160
+  else if (itemTitle.includes(wantedTitle)) score += 90
+  else if (wantedTitle.includes(itemTitle) && itemTitle.length >= 4) score += 70
 
-  if (wantedArtist && itemArtist.includes(wantedArtist)) score += 45
-  if (wantedArtist && wantedArtist.includes(itemArtist)) score += 25
+  if (wantedArtist && itemArtist === wantedArtist) score += 100
+  else if (wantedArtist && itemArtist.includes(wantedArtist)) score += 75
+  else if (wantedArtist && wantedArtist.includes(itemArtist) && itemArtist.length >= 4) score += 45
 
-  if (item.syncedLyrics) score += 30
+  if (item.syncedLyrics) score += 40
   if (item.plainLyrics) score += 15
 
   if (duration && item.duration) {
     const diff = Math.abs(item.duration - duration)
-    if (diff <= 2) score += 30
-    else if (diff <= 8) score += 15
-    else if (diff > 25) score -= 25
+
+    if (diff <= 1) score += 90
+    else if (diff <= 3) score += 70
+    else if (diff <= 6) score += 45
+    else if (diff <= 10) score += 20
+    else if (diff > 20) score -= 80
+    else if (diff > 12) score -= 40
   }
+
+  for (const word of badVersionWords) {
+    const candidateHasBadWord = fullItemText.includes(word)
+    const wantedHasBadWord = wantedTitle.includes(word)
+
+    if (candidateHasBadWord && !wantedHasBadWord) {
+      score -= 60
+    }
+  }
+
+  if (!item.syncedLyrics && item.plainLyrics) score -= 10
 
   return score
 }
@@ -195,7 +232,7 @@ async function trySearchFallback(title: string, artist: string, duration?: numbe
       }))
       .sort((a, b) => b.score - a.score)[0]
 
-    if (best && best.score >= 30) {
+    if (best && best.score >= 75) {
       const result = toLyricsResult(best.item)
       if (result) return result
     }

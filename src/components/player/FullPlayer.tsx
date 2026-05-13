@@ -12,6 +12,7 @@ import {
 import { SafeImage } from '../common/SafeImage'
 import { usePlayerStore } from '../../store/player-store'
 import { LyricsPanel } from './LyricsPanel'
+import { CurrentLyricsPreview } from './CurrentLyricsPreview'
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds)) return '0:00'
@@ -101,6 +102,8 @@ export function FullPlayer() {
             className="mx-auto aspect-square w-full max-w-[320px] rounded-[2rem] object-cover shadow-2xl"
           />
         </div>
+
+        <CurrentLyricsPreview />
 
         <div className="mt-7">
           <h1 className="line-clamp-2 text-2xl font-black">{currentTrack.title}</h1>
