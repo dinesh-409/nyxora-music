@@ -5,8 +5,6 @@ import {
   Pause,
   Play,
   Repeat,
-  RotateCcw,
-  RotateCw,
   Settings,
   Shuffle,
   SkipBack,
