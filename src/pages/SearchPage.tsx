@@ -16,6 +16,7 @@ import {
 import { usePlayerStore } from '../store/player-store'
 import { useSettingsStore } from '../store/settings-store'
 import type { Track } from '../types/music'
+import { getCachedOrFallback, saveSearchCache } from '../lib/search-cache'
 
 type SearchTab = 'songs' | 'playlists'
 type SearchMode = 'home' | 'focused'
@@ -192,13 +193,25 @@ export function SearchPage() {
       if (activeTab === 'songs') {
         const result = await searchYouTubeSongs(clean, listeningLanguages)
         setSongs(result)
+        saveSearchCache(clean, result)
       } else {
         const result = await searchYouTubePlaylists(clean)
         setPlaylists(result)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Search failed'
-      setError(message)
+
+      if (activeTab === 'songs') {
+        const fallback = getCachedOrFallback(clean)
+        if (fallback.length) {
+          setSongs(fallback)
+          setError(`${message} Showing cached/local results.`)
+        } else {
+          setError(message)
+        }
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
