@@ -2,10 +2,25 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { RepeatMode, SeekSource, ShuffleMode, Track } from '../types/music'
 
+export type QueuedTrack = Track & {
+  queueItemId: string
+}
+
+const makeQueueItem = (track: Track): QueuedTrack => ({
+  ...track,
+  queueItemId:
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${track.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+})
+
+
 interface PlayerState {
   currentTrack: Track | null
   playingFromTitle: string
   queue: Track[]
+  queuedTracks: QueuedTrack[]
+  recommendedTracks: Track[]
   currentIndex: number
   isPlaying: boolean
   isLoading: boolean
@@ -27,6 +42,8 @@ interface PlayerState {
   isFullPlayerOpen: boolean
   sleepTimerMinutes: number | null
   isQueueOpen: boolean
+  isQueueExpanded: boolean
+  isQueueEditMode: boolean
   playerLoadKey: number
 
   setCurrentTrack: (track: Track | null, playingFromTitle?: string) => void
@@ -50,6 +67,11 @@ interface PlayerState {
   toggleLikeCurrentTrack: () => void
   addCurrentTrackToQueue: () => void
   addTrackToQueue: (track: Track) => void
+  removeQueuedTrack: (queueItemId: string) => void
+  clearQueuedTracks: () => void
+  moveQueuedTrack: (activeId: string, overId: string) => void
+  setRecommendedTracks: (tracks: Track[]) => void
+  setQueueExpanded: (value: boolean) => void
   setSleepTimer: (minutes: number | null) => void
   setQueueOpen: (open: boolean) => void
   playQueueIndex: (index: number) => void
@@ -66,6 +88,8 @@ export const usePlayerStore = create<PlayerState>()(
       currentTrack: null,
       playingFromTitle: 'Nyxora Music',
       queue: [],
+      queuedTracks: [],
+      recommendedTracks: [],
       currentIndex: -1,
       isPlaying: false,
       isLoading: false,
@@ -87,6 +111,8 @@ export const usePlayerStore = create<PlayerState>()(
       isFullPlayerOpen: false,
       sleepTimerMinutes: null,
       isQueueOpen: false,
+      isQueueExpanded: false,
+      isQueueEditMode: false,
       playerLoadKey: 0,
 
       setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
@@ -260,8 +286,40 @@ export const usePlayerStore = create<PlayerState>()(
 
       addTrackToQueue: (track) => {
         if (!track?.id) return
-        set({ queue: [...get().queue, { ...track }] })
+
+        set({
+          queuedTracks: [...get().queuedTracks, makeQueueItem(track)],
+          queue: [...get().queue, { ...track }],
+        })
       },
+
+      removeQueuedTrack: (queueItemId) =>
+        set({
+          queuedTracks: get().queuedTracks.filter((item) => item.queueItemId !== queueItemId),
+        }),
+
+      clearQueuedTracks: () =>
+        set({
+          queuedTracks: [],
+        }),
+
+      moveQueuedTrack: (activeId, overId) =>
+        set((state) => {
+          const oldIndex = state.queuedTracks.findIndex((item) => item.queueItemId === activeId)
+          const newIndex = state.queuedTracks.findIndex((item) => item.queueItemId === overId)
+
+          if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return {}
+
+          const updated = [...state.queuedTracks]
+          const [moved] = updated.splice(oldIndex, 1)
+          updated.splice(newIndex, 0, moved)
+
+          return { queuedTracks: updated }
+        }),
+
+      setRecommendedTracks: (tracks) => set({ recommendedTracks: tracks }),
+
+      setQueueExpanded: (value) => set({ isQueueExpanded: value }),
 
       setSleepTimer: (minutes) => set({ sleepTimerMinutes: minutes }),
 
@@ -365,6 +423,10 @@ export const usePlayerStore = create<PlayerState>()(
         likedTrackIds: state.likedTrackIds,
         sleepTimerMinutes: state.sleepTimerMinutes,
         isQueueOpen: state.isQueueOpen,
+        isQueueExpanded: state.isQueueExpanded,
+        isQueueEditMode: state.isQueueEditMode,
+        queuedTracks: state.queuedTracks,
+        recommendedTracks: state.recommendedTracks,
         playerLoadKey: state.playerLoadKey,
         savedLyricsOffsets: state.savedLyricsOffsets,
       }),
