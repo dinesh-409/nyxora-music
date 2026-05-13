@@ -46,6 +46,9 @@ interface PlayerState {
   isQueueOpen: boolean
   isQueueExpanded: boolean
   isQueueEditMode: boolean
+  isSleepTimerOpen: boolean
+  sleepTimerEndsAt: number | null
+  sleepTimerMode: 'off' | 'minutes' | 'end-of-track'
   playerLoadKey: number
 
   setCurrentTrack: (track: Track | null, playingFromTitle?: string) => void
@@ -74,6 +77,10 @@ interface PlayerState {
   moveQueuedTrack: (activeId: string, overId: string) => void
   setRecommendedTracks: (tracks: Track[]) => void
   setQueueExpanded: (value: boolean) => void
+  setSleepTimerOpen: (value: boolean) => void
+  setSleepTimerMinutes: (minutes: number) => void
+  setSleepTimerEndOfTrack: () => void
+  clearSleepTimer: () => void
   setSleepTimer: (minutes: number | null) => void
   setQueueOpen: (open: boolean) => void
   playQueueIndex: (index: number) => void
@@ -116,6 +123,9 @@ export const usePlayerStore = create<PlayerState>()(
       isQueueOpen: false,
       isQueueExpanded: false,
       isQueueEditMode: false,
+      isSleepTimerOpen: false,
+      sleepTimerEndsAt: null,
+      sleepTimerMode: 'off',
       playerLoadKey: 0,
 
       setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
@@ -324,6 +334,29 @@ export const usePlayerStore = create<PlayerState>()(
 
       setQueueExpanded: (value) => set({ isQueueExpanded: value }),
 
+      setSleepTimerOpen: (value) => set({ isSleepTimerOpen: value }),
+
+      setSleepTimerMinutes: (minutes) =>
+        set({
+          sleepTimerMode: 'minutes',
+          sleepTimerEndsAt: Date.now() + minutes * 60 * 1000,
+          isSleepTimerOpen: false,
+        }),
+
+      setSleepTimerEndOfTrack: () =>
+        set({
+          sleepTimerMode: 'end-of-track',
+          sleepTimerEndsAt: null,
+          isSleepTimerOpen: false,
+        }),
+
+      clearSleepTimer: () =>
+        set({
+          sleepTimerMode: 'off',
+          sleepTimerEndsAt: null,
+          isSleepTimerOpen: false,
+        }),
+
       setSleepTimer: (minutes) => set({ sleepTimerMinutes: minutes }),
 
       setQueueOpen: (open) => set({ isQueueOpen: open }),
@@ -431,6 +464,8 @@ export const usePlayerStore = create<PlayerState>()(
         queuedTracks: state.queuedTracks,
         recommendedTracks: state.recommendedTracks,
         queueDisplayItems: state.queueDisplayItems,
+        sleepTimerMode: state.sleepTimerMode,
+        sleepTimerEndsAt: state.sleepTimerEndsAt,
         playerLoadKey: state.playerLoadKey,
         savedLyricsOffsets: state.savedLyricsOffsets,
       }),

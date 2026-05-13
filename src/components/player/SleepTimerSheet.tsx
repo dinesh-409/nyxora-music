@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Check } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { Check, Timer, X } from 'lucide-react'
 import { usePlayerStore } from '../../store/player-store'
 
-type TimerMode = 'minutes' | 'end_of_track' | null
+function toast(message: string) {
+  window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: message }))
+}
 
 const TIMER_OPTIONS = [
   { label: '5 minutes', minutes: 5 },
@@ -13,24 +15,30 @@ const TIMER_OPTIONS = [
   { label: '1 hour', minutes: 60 },
 ]
 
-function toast(message: string) {
-  window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: message }))
+function formatRemaining(ms: number) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  if (minutes <= 0) return `${seconds}s left`
+  return `${minutes}m ${seconds.toString().padStart(2, '0')}s left`
 }
 
 export function SleepTimerSheet() {
-  const [open, setOpen] = useState(false)
-  const [mode, setMode] = useState<TimerMode>(null)
-  const [endsAt, setEndsAt] = useState<number | null>(null)
+  const state = usePlayerStore() as any
 
-  const currentTime = usePlayerStore((state) => state.currentTime)
-  const duration = usePlayerStore((state) => state.duration)
-  const currentTrack = usePlayerStore((state) => state.currentTrack)
-  const setPlaying = usePlayerStore((state) => state.setPlaying)
-  const setSleepTimer = usePlayerStore((state) => state.setSleepTimer)
+  const isOpen = Boolean(state.isSleepTimerOpen)
+  const sleepTimerMode = state.sleepTimerMode ?? 'off'
+  const sleepTimerEndsAt = state.sleepTimerEndsAt ?? null
+
+  const remainingText = useMemo(() => {
+    if (sleepTimerMode !== 'minutes' || !sleepTimerEndsAt) return null
+    return formatRemaining(sleepTimerEndsAt - Date.now())
+  }, [sleepTimerMode, sleepTimerEndsAt, isOpen])
 
   useEffect(() => {
     function openTimer() {
-      setOpen(true)
+      usePlayerStore.setState({ isSleepTimerOpen: true })
     }
 
     window.addEventListener('nyxora-open-sleep-timer', openTimer)
@@ -38,115 +46,117 @@ export function SleepTimerSheet() {
   }, [])
 
   useEffect(() => {
-    if (mode !== 'minutes' || !endsAt) return
+    if (sleepTimerMode !== 'minutes' || !sleepTimerEndsAt) return
 
     const interval = window.setInterval(() => {
-      if (Date.now() >= endsAt) {
-        setPlaying(false)
-        setMode(null)
-        setEndsAt(null)
-        setSleepTimer(null)
-        toast('Sleep timer finished')
+      const latest = usePlayerStore.getState() as any
+      if (latest.sleepTimerMode !== 'minutes' || !latest.sleepTimerEndsAt) return
+
+      if (Date.now() >= latest.sleepTimerEndsAt) {
+        usePlayerStore.setState({
+          isPlaying: false,
+          sleepTimerMode: 'off',
+          sleepTimerEndsAt: null,
+          isSleepTimerOpen: false,
+        })
+        toast('Sleep timer ended')
       }
     }, 1000)
 
     return () => window.clearInterval(interval)
-  }, [mode, endsAt, setPlaying, setSleepTimer])
+  }, [sleepTimerMode, sleepTimerEndsAt])
 
-  useEffect(() => {
-    if (mode !== 'end_of_track') return
-    if (!currentTrack) return
-    if (!duration || duration <= 0) return
+  if (!isOpen) return null
 
-    const remaining = duration - currentTime
-    if (remaining <= 1.2 && currentTime > 5) {
-      setPlaying(false)
-      setMode(null)
-      setEndsAt(null)
-      setSleepTimer(null)
-      toast('Stopped at end of track')
-    }
-  }, [mode, currentTrack?.id, currentTime, duration, setPlaying, setSleepTimer])
+  function close() {
+    usePlayerStore.setState({ isSleepTimerOpen: false })
+  }
 
-  function chooseMinutes(minutes: number) {
-    setMode('minutes')
-    setEndsAt(Date.now() + minutes * 60 * 1000)
-    setSleepTimer(minutes)
-    setOpen(false)
+  function setMinutes(minutes: number) {
+    state.setSleepTimerMinutes?.(minutes)
     toast(`Sleep timer set for ${minutes} minutes`)
   }
 
-  function chooseEndOfTrack() {
-    setMode('end_of_track')
-    setEndsAt(null)
-    setSleepTimer(null)
-    setOpen(false)
-    toast('Playback will stop at end of track')
+  function setEndOfTrack() {
+    state.setSleepTimerEndOfTrack?.()
+    toast('Sleep timer set for end of track')
   }
 
-  function cancelTimer() {
-    setMode(null)
-    setEndsAt(null)
-    setSleepTimer(null)
-    setOpen(false)
+  function clearTimer() {
+    state.clearSleepTimer?.()
     toast('Sleep timer cancelled')
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-[100] bg-black/55 text-white backdrop-blur-sm">
-      <button
-        className="absolute inset-0 cursor-default"
-        onClick={() => setOpen(false)}
-        aria-label="Close sleep timer"
-      />
+    <div className="fixed inset-0 z-[110] bg-black/45 text-white backdrop-blur-sm">
+      <button className="absolute inset-0" onClick={close} aria-label="Close sleep timer" />
 
-      <div className="absolute inset-x-0 bottom-0 mx-auto max-w-md overflow-hidden rounded-t-[2rem] bg-[#1e1e1e] shadow-2xl">
-        <div className="flex justify-center pt-4">
-          <div className="h-1.5 w-24 rounded-full bg-white/30" />
+      <div
+        onClick={(event) => event.stopPropagation()}
+        className="absolute inset-x-0 bottom-0 mx-auto max-w-md overflow-hidden rounded-t-[28px] bg-[#1f1f1f] shadow-2xl"
+      >
+        <div className="flex justify-center pb-3 pt-3">
+          <div className="h-1.5 w-16 rounded-full bg-white/40" />
         </div>
 
-        <h2 className="border-b border-white/10 py-8 text-center text-3xl font-black">
-          Sleep timer
-        </h2>
+        <header className="flex items-center justify-between border-b border-white/10 px-5 pb-5 pt-2">
+          <div className="flex items-center gap-3">
+            <Timer size={28} />
+            <div>
+              <h2 className="text-[28px] font-black leading-none">Sleep timer</h2>
+              {sleepTimerMode === 'minutes' && remainingText && (
+                <p className="mt-2 text-sm font-semibold text-emerald-400">{remainingText}</p>
+              )}
+              {sleepTimerMode === 'end-of-track' && (
+                <p className="mt-2 text-sm font-semibold text-emerald-400">End of track selected</p>
+              )}
+            </div>
+          </div>
 
-        <div className="pb-6">
+          <button
+            onClick={close}
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 active:bg-white/20"
+          >
+            <X size={22} />
+          </button>
+        </header>
+
+        <section className="px-5 py-3">
           {TIMER_OPTIONS.map((option) => {
-            const active =
-              mode === 'minutes' &&
-              endsAt !== null &&
-              Math.round((endsAt - Date.now()) / 60000) === option.minutes
+            const isSelected =
+              sleepTimerMode === 'minutes' &&
+              sleepTimerEndsAt &&
+              Math.abs(sleepTimerEndsAt - Date.now() - option.minutes * 60 * 1000) < 2500
 
             return (
               <button
                 key={option.minutes}
-                onClick={() => chooseMinutes(option.minutes)}
-                className="flex w-full items-center justify-between px-8 py-5 text-left text-2xl font-medium active:bg-white/10"
+                onClick={() => setMinutes(option.minutes)}
+                className="flex w-full items-center justify-between py-5 text-left active:bg-white/5"
               >
-                <span>{option.label}</span>
-                {active && <Check size={24} className="text-emerald-400" />}
+                <span className="text-[22px] font-semibold">{option.label}</span>
+                {isSelected && <Check className="text-emerald-400" size={24} />}
               </button>
             )
           })}
 
           <button
-            onClick={chooseEndOfTrack}
-            className="flex w-full items-center justify-between px-8 py-5 text-left text-2xl font-medium active:bg-white/10"
+            onClick={setEndOfTrack}
+            className="flex w-full items-center justify-between py-5 text-left active:bg-white/5"
           >
-            <span>End of track</span>
-            {mode === 'end_of_track' && <Check size={24} className="text-emerald-400" />}
+            <span className="text-[22px] font-semibold">End of track</span>
+            {sleepTimerMode === 'end-of-track' && <Check className="text-emerald-400" size={24} />}
           </button>
 
-          {mode && (
+          {sleepTimerMode !== 'off' && (
             <button
-              onClick={cancelTimer}
-              className="mt-2 w-full px-8 py-5 text-left text-xl font-black text-red-300 active:bg-white/10"
+              onClick={clearTimer}
+              className="mt-2 flex w-full items-center justify-center rounded-2xl bg-white/10 py-4 text-[18px] font-black text-white active:bg-white/20"
             >
               Cancel timer
             </button>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )
