@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ListMusic, Menu, Pause, Play, Repeat, Shuffle, Timer, X } from 'lucide-react'
+import { ListMusic, Menu, Pause, Play, Repeat, Shuffle, Timer, X, Sparkles } from 'lucide-react'
 import { usePlayerStore, type QueuedTrack } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 import { getRecommendedQueue } from '../../lib/queue-recommendations'
@@ -27,22 +27,6 @@ type QueueDisplayItem = QueuedTrack & {
 
 function toast(message: string) {
   window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: message }))
-}
-
-function createQueueItem(
-  track: Track,
-  sourceType: 'queued' | 'recommended' = 'queued',
-  index = 0,
-): QueueDisplayItem {
-  const existing = track as Track & { queueItemId?: string; sourceType?: 'queued' | 'recommended' }
-
-  return {
-    ...track,
-    queueItemId:
-      existing.queueItemId ||
-      `${sourceType}-${track.id}-${track.videoId || 'no-video'}-${index}`,
-    sourceType,
-  }
 }
 
 function cleanTrack(track: Track | QueuedTrack): Track {
@@ -90,7 +74,7 @@ function SortableQueueRow({
     transition,
   }
 
-  const isRecommended = item.sourceType === 'recommended'
+  const isRecommended = item.sourceType === 'recommended' || item.queueItemId.startsWith('recommended-')
 
   return (
     <div
@@ -119,8 +103,8 @@ function SortableQueueRow({
         </p>
         <p className="mt-1 flex items-center gap-1.5 truncate text-[16px] text-white/60">
           {isRecommended ? (
-            <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[3px] bg-emerald-500 text-[10px] font-black text-black">
-              ✦
+            <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[3px] bg-emerald-500 text-black">
+              <Sparkles size={11} fill="currentColor" />
             </span>
           ) : (
             <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[3px] border border-emerald-400 text-emerald-400">
@@ -184,36 +168,27 @@ export function QueuePanel() {
   }, [currentTrack?.id, playbackQueue.length, state.recommendedTracks?.length])
 
   const displayItems: QueueDisplayItem[] = useMemo(() => {
-    const savedDisplayItems = (state.queueDisplayItems ?? []) as QueueDisplayItem[]
-
-    if (savedDisplayItems.length > 0) {
-      return savedDisplayItems
-        .map((item, index) => ({
-          ...item,
-          queueItemId:
-            item.queueItemId ||
-            `${item.sourceType ?? 'recommended'}-${item.id}-${item.videoId || 'no-video'}-${index}`,
-          sourceType: item.sourceType ?? 'recommended',
-        }))
-        .filter((item) => Boolean(item.queueItemId))
-    }
+    const manualKeys = new Set(
+      queuedTracks.map((track) => `${track.id}-${track.videoId ?? ''}`),
+    )
 
     const queuedItems: QueueDisplayItem[] = queuedTracks.map((track, index) => ({
       ...track,
-      queueItemId: track.queueItemId || `queued-${track.id}-${track.videoId || 'no-video'}-${index}`,
+      queueItemId:
+        track.queueItemId || `queued-${track.id}-${track.videoId || 'no-video'}-${index}`,
       sourceType: 'queued' as const,
     }))
 
-    const queuedKeys = new Set(
-      queuedItems.map((track) => `${track.id}-${track.videoId ?? ''}`),
-    )
-
     const recommendedItems: QueueDisplayItem[] = recommendedTracks
-      .filter((track) => !queuedKeys.has(`${track.id}-${track.videoId ?? ''}`))
-      .map((track, index) => createQueueItem(track, 'recommended', index))
+      .filter((track) => !manualKeys.has(`${track.id}-${track.videoId ?? ''}`))
+      .map((track, index) => ({
+        ...track,
+        queueItemId: `recommended-${track.id}-${track.videoId || 'no-video'}-${index}`,
+        sourceType: 'recommended' as const,
+      }))
 
-    return [...queuedItems, ...recommendedItems].filter((item) => Boolean(item.queueItemId))
-  }, [queuedTracks, recommendedTracks, state.queueDisplayItems])
+    return [...queuedItems, ...recommendedItems]
+  }, [queuedTracks, recommendedTracks])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -259,9 +234,14 @@ export function QueuePanel() {
       (item) => item.sourceType === 'queued',
     )
 
+    const autoRecommendedTracks = normalizedDisplayItems
+      .filter((item) => item.sourceType === 'recommended')
+      .map((item) => cleanTrack(item))
+
     usePlayerStore.setState({
       queueDisplayItems: normalizedDisplayItems,
       queuedTracks: manualQueuedTracks,
+      recommendedTracks: autoRecommendedTracks,
       queue: [
         ...(currentTrack ? [currentTrack] : []),
         ...normalizedDisplayItems.map((item) => cleanTrack(item)),
