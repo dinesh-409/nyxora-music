@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Heart, Pause, Play } from 'lucide-react'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
+import { useLikedTrack } from '../../hooks/use-liked-track'
 
 export function MiniPlayer() {
-  const [miniLiked, setMiniLiked] = useState(false)
-  const swipeStartX = useRef<number | null>(null)
+const swipeStartX = useRef<number | null>(null)
 const {
     currentTrack,
 isPlaying,
@@ -14,6 +14,8 @@ isPlaying,
     nextTrack,
 setFullPlayerOpen,
   } = usePlayerStore()
+
+  const { liked: miniLiked, toggleLiked: toggleMiniLiked } = useLikedTrack(currentTrack)
 
   if (!currentTrack) {
     return (
@@ -88,7 +90,7 @@ setFullPlayerOpen,
 <button
             onClick={(event) => {
               event.stopPropagation()
-              setMiniLiked((value: boolean) => !value)
+              toggleMiniLiked()
               window.dispatchEvent(
                 new CustomEvent('nyxora-toast', {
                   detail: miniLiked ? 'Removed from liked songs' : 'Added to liked songs',

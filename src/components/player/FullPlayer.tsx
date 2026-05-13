@@ -1,30 +1,11 @@
 import { useEffect, useState } from 'react'
-import {
-  ChevronDown,
-  CirclePlus,
-  Clock3,
-  Disc3,
-  Heart,
-  ListMusic,
-  MinusCircle,
-  MoreVertical,
-  Pause,
-  Play,
-  Repeat,
-RotateCcw,
-  RotateCw,
-  Share2,
-  Shuffle,
-  SkipBack,
-  SkipForward,
-  UserRound,
-  X,
-} from 'lucide-react'
+import { ChevronDown, CirclePlus, Clock3, Disc3, Heart, ListMusic, MinusCircle, MoreVertical, Pause, Play, Repeat, RotateCcw, RotateCw, Share2, Shuffle, SkipBack, SkipForward, UserRound, X } from 'lucide-react'
 import { SafeImage } from '../common/SafeImage'
 import { usePlayerStore } from '../../store/player-store'
 import { LyricsPanel } from './LyricsPanel'
 import { CurrentLyricsPreview } from './CurrentLyricsPreview'
 import { openQueuePanel } from '../../lib/open-queue'
+import { useLikedTrack } from '../../hooks/use-liked-track'
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds)) return '0:00'
@@ -131,8 +112,7 @@ playingFromTitle,
     duration,
     repeatMode,
     shuffleMode,
-    likedTrackIds,
-    sleepTimerMinutes,
+sleepTimerMinutes,
     setPlaying,
     seekTo,
     nextTrack,
@@ -140,14 +120,11 @@ playingFromTitle,
     toggleRepeat,
 toggleShuffle,
     setFullPlayerOpen,
-    toggleLikeCurrentTrack,
-    addCurrentTrackToQueue,
+addCurrentTrackToQueue,
     setSleepTimer,
   } = usePlayerStore()
-
-  const liked = currentTrack?.id ? likedTrackIds.includes(currentTrack.id) : false
-
-  useEffect(() => {
+  const { liked: fullLiked, toggleLiked: toggleFullLiked } = useLikedTrack(currentTrack)
+useEffect(() => {
     if (!sleepTimerMinutes) return
 
     const timer = window.setTimeout(() => {
@@ -349,12 +326,15 @@ toggleShuffle,
             </div>
 
             <button
-              onClick={toggleLikeCurrentTrack}
+              onClick={(event) => {
+              event.stopPropagation()
+              toggleFullLiked()
+            }}
               className={`mt-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 active:scale-95 ${
-                liked ? 'border-emerald-400 bg-emerald-400 text-black' : 'border-white text-white'
+                fullLiked ? 'border-emerald-400 bg-emerald-400 text-black' : 'border-white text-white'
               }`}
             >
-              <Heart size={29} fill={liked ? 'black' : 'none'} />
+              <Heart size={29} fill={fullLiked ? 'black' : 'none'} />
             </button>
           </div>
 
