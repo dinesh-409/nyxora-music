@@ -3,6 +3,7 @@ import type { Track } from '../../types/music'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 import { openQueuePanel } from '../../lib/open-queue'
+import { addTrackToLikedSongs } from '../../lib/liked-tracks'
 
 interface SongOptionsMenuProps {
   track: Track | null
@@ -61,7 +62,13 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
   }
 
   const items = [
-    { icon: Share2, label: 'Share', action: shareTrack },
+    
+    {
+      icon: CirclePlus,
+      label: 'Add to liked songs',
+      action: () => addTrackToLikedSongs(track),
+    },
+{ icon: Share2, label: 'Share', action: shareTrack },
     { icon: CirclePlus, label: 'Add to playlist', action: () => placeholder('Playlist saving coming next') },
     { icon: ListMusic, label: 'Add to Queue', action: addQueue },
     { icon: ListMusic, label: 'Go to Queue', action: goQueue },
