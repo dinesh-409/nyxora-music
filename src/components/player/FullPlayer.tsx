@@ -236,6 +236,7 @@ export function FullPlayer() {
 
   function openQueue() {
     setQueueOpen(true)
+    window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
     setMenuOpen(false)
   }
 

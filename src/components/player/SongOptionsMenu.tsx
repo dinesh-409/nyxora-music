@@ -51,6 +51,7 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
 
   function goQueue() {
     setQueueOpen(true)
+    window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
     onClose()
   }
 

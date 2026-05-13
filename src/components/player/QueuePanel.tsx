@@ -244,6 +244,15 @@ export function QueuePanel() {
     [queueItems],
   )
 
+  useEffect(() => {
+    function openQueue() {
+      setQueueOpen(true)
+    }
+
+    window.addEventListener('nyxora-open-queue', openQueue)
+    return () => window.removeEventListener('nyxora-open-queue', openQueue)
+  }, [setQueueOpen])
+
   if (!isQueueOpen) return null
 
   function handleDragEnd(event: DragEndEvent) {
