@@ -59,6 +59,25 @@ export function SearchPage() {
   const listeningLanguages = useSettingsStore((state) => state.listeningLanguages)
   const hasYouTubeKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY)
 
+  function cleanSuggestionTitle(value: string) {
+    return value
+      .replace(/\(Official.*?\)/gi, '')
+      .replace(/\[Official.*?\]/gi, '')
+      .replace(/Official Music Video/gi, '')
+      .replace(/Official Video/gi, '')
+      .replace(/Official Song/gi, '')
+      .replace(/Full Video Song/gi, '')
+      .replace(/Full Song/gi, '')
+      .replace(/Lyrics?/gi, '')
+      .replace(/Audio/gi, '')
+      .replace(/4K/gi, '')
+      .replace(/HD/gi, '')
+      .replace(/\|.*$/g, '')
+      .replace(/#\w+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
   const liveSuggestions = useMemo(() => {
     const clean = query.trim()
 
@@ -68,11 +87,21 @@ export function SearchPage() {
 
     const matchingHistory = searchHistory
       .filter((item) => item.toLowerCase().includes(clean.toLowerCase()))
-      .slice(0, 4)
+      .slice(0, 3)
 
-    return [clean, ...matchingHistory]
-      .filter((item, index, arr) => item && arr.indexOf(item) === index)
-  }, [query, searchHistory])
+    const resultSuggestions = songs
+      .map((track) => cleanSuggestionTitle(track.title))
+      .filter((title) => title.length > 1)
+      .filter((title) => title.toLowerCase() !== clean.toLowerCase())
+      .slice(0, 6)
+
+    return [clean, ...matchingHistory, ...resultSuggestions]
+      .filter((item, index, arr) => {
+        const key = item.toLowerCase()
+        return item && arr.findIndex((x) => x.toLowerCase() === key) === index
+      })
+      .slice(0, 7)
+  }, [query, searchHistory, songs])
 
   useEffect(() => {
     if (mode !== 'focused') return
@@ -272,7 +301,7 @@ export function SearchPage() {
         ) : (
           <>
             <section className="mt-7 space-y-6">
-              {liveSuggestions.slice(0, 3).map((item, index) => (
+              {liveSuggestions.slice(0, 7).map((item, index) => (
                 <button
                   key={`${item}-${index}`}
                   onClick={() => chooseSuggestion(item)}
