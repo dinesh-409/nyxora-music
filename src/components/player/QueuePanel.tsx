@@ -246,12 +246,12 @@ export function QueuePanel() {
 
   useEffect(() => {
     function openQueue() {
-      setQueueOpen(true)
+      usePlayerStore.setState({ isQueueOpen: true })
     }
 
     window.addEventListener('nyxora-open-queue', openQueue)
     return () => window.removeEventListener('nyxora-open-queue', openQueue)
-  }, [setQueueOpen])
+  }, [])
 
   if (!isQueueOpen) return null
 

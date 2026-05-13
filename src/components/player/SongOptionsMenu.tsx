@@ -11,7 +11,6 @@ interface SongOptionsMenuProps {
 
 export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) {
   const addTrackToQueue = usePlayerStore((state) => state.addTrackToQueue)
-  const setQueueOpen = usePlayerStore((state) => state.setQueueOpen)
 
   if (!open || !track) return null
 
@@ -50,7 +49,7 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
   }
 
   function goQueue() {
-    setQueueOpen(true)
+    usePlayerStore.setState({ isQueueOpen: true }); window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
     window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
     onClose()
   }

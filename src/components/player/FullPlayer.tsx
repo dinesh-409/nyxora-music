@@ -142,7 +142,6 @@ export function FullPlayer() {
     toggleLikeCurrentTrack,
     addCurrentTrackToQueue,
     setSleepTimer,
-    setQueueOpen,
   } = usePlayerStore()
 
   const liked = currentTrack?.id ? likedTrackIds.includes(currentTrack.id) : false
@@ -235,7 +234,7 @@ export function FullPlayer() {
   }
 
   function openQueue() {
-    setQueueOpen(true)
+    usePlayerStore.setState({ isQueueOpen: true }); window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
     window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
     setMenuOpen(false)
   }
