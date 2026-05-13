@@ -3,6 +3,8 @@ import YouTube, { type YouTubeEvent, type YouTubePlayer } from 'react-youtube'
 import { usePlayerStore } from '../../store/player-store'
 import { useLyricsStore } from '../../store/lyrics-store'
 
+
+
 export function AudioEngine() {
   const playerRef = useRef<YouTubePlayer | null>(null)
   const progressTimerRef = useRef<number | null>(null)
