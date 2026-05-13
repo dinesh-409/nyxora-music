@@ -9,12 +9,16 @@ export function MiniPlayer() {
     isLoading,
     setPlaying,
     nextTrack,
+    setFullPlayerOpen,
   } = usePlayerStore()
 
   if (!currentTrack) {
     return (
       <div className="fixed bottom-20 left-1/2 z-30 w-[calc(100%-24px)] max-w-md -translate-x-1/2">
-        <div className="nyxora-glass flex items-center gap-3 rounded-2xl p-3">
+        <button
+          onClick={() => setFullPlayerOpen(true)}
+          className="nyxora-glass flex w-full items-center gap-3 rounded-2xl p-3 text-left"
+        >
           <SafeImage
             src="/logo.png"
             alt="Nyxora Music"
@@ -24,17 +28,20 @@ export function MiniPlayer() {
             <p className="truncate text-sm font-bold">No song playing</p>
             <p className="truncate text-xs text-white/55">Tap a song to start</p>
           </div>
-          <button className="rounded-full bg-white/10 p-2 text-white/60">
+          <div className="rounded-full bg-white/10 p-2 text-white/60">
             <Play size={18} />
-          </button>
-        </div>
+          </div>
+        </button>
       </div>
     )
   }
 
   return (
     <div className="fixed bottom-20 left-1/2 z-30 w-[calc(100%-24px)] max-w-md -translate-x-1/2">
-      <div className="nyxora-glass flex items-center gap-3 rounded-2xl p-3">
+      <button
+        onClick={() => setFullPlayerOpen(true)}
+        className="nyxora-glass flex w-full items-center gap-3 rounded-2xl p-3 text-left"
+      >
         <SafeImage
           src={currentTrack.thumbnail}
           alt={currentTrack.title}
@@ -49,16 +56,25 @@ export function MiniPlayer() {
         </div>
 
         <button
-          onClick={() => setPlaying(!isPlaying)}
+          onClick={(event) => {
+            event.stopPropagation()
+            setPlaying(!isPlaying)
+          }}
           className="rounded-full bg-white p-2 text-black"
         >
           {isPlaying ? <Pause size={18} fill="black" /> : <Play size={18} fill="black" />}
         </button>
 
-        <button onClick={nextTrack} className="rounded-full bg-white/10 p-2 text-white">
+        <button
+          onClick={(event) => {
+            event.stopPropagation()
+            nextTrack()
+          }}
+          className="rounded-full bg-white/10 p-2 text-white"
+        >
           <SkipForward size={18} />
         </button>
-      </div>
+      </button>
     </div>
   )
 }

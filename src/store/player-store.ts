@@ -20,6 +20,7 @@ interface PlayerState {
   playlistOpens: Record<string, number>
   searchHistory: string[]
   recentSearchItems: Track[]
+  isFullPlayerOpen: boolean
 
   setCurrentTrack: (track: Track | null) => void
   setQueue: (queue: Track[], startIndex?: number) => void
@@ -36,6 +37,7 @@ interface PlayerState {
   addSearchQuery: (query: string) => void
   clearSearchHistory: () => void
   incrementPlayCount: (trackId: string) => void
+  setFullPlayerOpen: (open: boolean) => void
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -58,6 +60,7 @@ export const usePlayerStore = create<PlayerState>()(
       playlistOpens: {},
       searchHistory: [],
       recentSearchItems: [],
+      isFullPlayerOpen: false,
 
       setCurrentTrack: (track) =>
         set({
@@ -187,6 +190,8 @@ export const usePlayerStore = create<PlayerState>()(
         const counts = get().playCounts
         set({ playCounts: { ...counts, [trackId]: (counts[trackId] ?? 0) + 1 } })
       },
+
+      setFullPlayerOpen: (open) => set({ isFullPlayerOpen: open }),
     }),
     {
       name: 'nyxora-player-store',

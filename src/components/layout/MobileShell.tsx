@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { ErrorBoundary } from '../common/ErrorBoundary'
 import { BottomNav } from './BottomNav'
 import { MiniPlayer } from '../player/MiniPlayer'
+import { FullPlayer } from '../player/FullPlayer'
+import { usePlayerStore } from '../../store/player-store'
 
 interface MobileShellProps {
   children: ReactNode
@@ -10,6 +12,8 @@ interface MobileShellProps {
 }
 
 export function MobileShell({ children, activeTab, onTabChange }: MobileShellProps) {
+  const isFullPlayerOpen = usePlayerStore((state) => state.isFullPlayerOpen)
+
   return (
     <main className="nyxora-gradient min-h-screen text-white">
       <section className="mx-auto flex min-h-screen w-full max-w-md flex-col overflow-hidden">
@@ -22,6 +26,12 @@ export function MobileShell({ children, activeTab, onTabChange }: MobileShellPro
         </ErrorBoundary>
 
         <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
+
+        {isFullPlayerOpen && (
+          <ErrorBoundary fallbackTitle="Full player crashed safely">
+            <FullPlayer />
+          </ErrorBoundary>
+        )}
       </section>
     </main>
   )
