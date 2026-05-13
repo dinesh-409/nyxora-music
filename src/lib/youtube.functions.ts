@@ -20,12 +20,14 @@ function getBestThumbnail(thumbnails: YouTubeSearchItem['snippet']['thumbnails']
 
 function guessArtistFromTitle(title: string, channelTitle: string): string {
   const separators = [' - ', ' – ', '|', ':']
+
   for (const separator of separators) {
     if (title.includes(separator)) {
       const first = title.split(separator)[0]?.trim()
       if (first) return first
     }
   }
+
   return channelTitle || 'YouTube'
 }
 
@@ -33,7 +35,7 @@ function mapSearchItemToTrack(item: YouTubeSearchItem, queryLanguage: string): T
   const videoId = item.id.videoId
   if (!videoId) return null
 
-  return {
+  const track: Track = {
     id: videoId,
     videoId,
     title: item.snippet.title,
@@ -44,6 +46,8 @@ function mapSearchItemToTrack(item: YouTubeSearchItem, queryLanguage: string): T
     source: 'youtube',
     language: queryLanguage === 'Unknown' ? undefined : queryLanguage,
   }
+
+  return track
 }
 
 export async function searchYouTubeSongs(
@@ -71,15 +75,17 @@ export async function searchYouTubeSongs(
   url.searchParams.set('key', YOUTUBE_API_KEY)
 
   const response = await fetch(url.toString())
+
   if (!response.ok) {
     throw new Error(`YouTube search failed: ${response.status}`)
   }
 
   const data = (await response.json()) as { items?: YouTubeSearchItem[] }
-  const tracks =
+
+  const tracks: Track[] =
     data.items
       ?.map((item) => mapSearchItemToTrack(item, detectedLanguage))
-      .filter((item): item is Track => Boolean(item)) ?? []
+      .filter((item): item is Track => item !== null) ?? []
 
   return rankTracks(tracks, clean, detectedLanguage, preferredLanguages, followedArtists)
 }
@@ -110,19 +116,20 @@ export async function searchYouTubePlaylists(query: string): Promise<YouTubePlay
   url.searchParams.set('key', YOUTUBE_API_KEY)
 
   const response = await fetch(url.toString())
+
   if (!response.ok) {
     throw new Error(`YouTube playlist search failed: ${response.status}`)
   }
 
   const data = (await response.json()) as { items?: YouTubeSearchItem[] }
 
-  return (
+  const playlists: YouTubePlaylistSummary[] =
     data.items
       ?.map((item) => {
         const playlistId = item.id.playlistId
         if (!playlistId) return null
 
-        return {
+        const playlist: YouTubePlaylistSummary = {
           id: playlistId,
           title: item.snippet.title,
           description: item.snippet.description,
@@ -130,9 +137,12 @@ export async function searchYouTubePlaylists(query: string): Promise<YouTubePlay
           thumbnail: getBestThumbnail(item.snippet.thumbnails),
           publishedAt: item.snippet.publishedAt,
         }
+
+        return playlist
       })
-      .filter((item): item is YouTubePlaylistSummary => Boolean(item)) ?? []
-  )
+      .filter((item): item is YouTubePlaylistSummary => item !== null) ?? []
+
+  return playlists
 }
 
 export async function fetchYouTubePlaylistItems(playlistId: string): Promise<Track[]> {
@@ -150,19 +160,20 @@ export async function fetchYouTubePlaylistItems(playlistId: string): Promise<Tra
   url.searchParams.set('key', YOUTUBE_API_KEY)
 
   const response = await fetch(url.toString())
+
   if (!response.ok) {
     throw new Error(`YouTube playlist items failed: ${response.status}`)
   }
 
   const data = (await response.json()) as { items?: YouTubePlaylistItem[] }
 
-  return (
+  const tracks: Track[] =
     data.items
       ?.map((item) => {
         const videoId = item.snippet.resourceId?.videoId
         if (!videoId) return null
 
-        return {
+        const track: Track = {
           id: videoId,
           videoId,
           title: item.snippet.title,
@@ -170,10 +181,12 @@ export async function fetchYouTubePlaylistItems(playlistId: string): Promise<Tra
           channelName: item.snippet.channelTitle,
           thumbnail: getBestThumbnail(item.snippet.thumbnails),
           publishedAt: item.snippet.publishedAt,
-          source: 'youtube' as const,
-          position: item.snippet.position,
+          source: 'youtube',
         }
+
+        return track
       })
-      .filter((item): item is Track => Boolean(item)) ?? []
-  )
+      .filter((item): item is Track => item !== null) ?? []
+
+  return tracks
 }
