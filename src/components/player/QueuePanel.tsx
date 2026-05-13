@@ -36,6 +36,11 @@ function cleanTrack(track: Track | QueuedTrack): Track {
   return next
 }
 
+function trackKey(track?: Partial<Track> | null) {
+  if (!track) return ''
+  return `${track.id || ''}-${track.videoId || ''}-${track.title || ''}`.toLowerCase()
+}
+
 function formatPlayingText(value?: string | null, currentTrack?: Track | null) {
   if (value?.toLowerCase().startsWith('search:')) {
     const query = value.replace(/^search:/i, '').trim()
@@ -80,7 +85,7 @@ function SortableQueueRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 py-3 ${
+      className={`flex items-center gap-3 py-3 transition-all duration-300 ${
         isDragging ? 'z-50 scale-[1.02] rounded-2xl bg-white/10 px-2 shadow-2xl' : ''
       }`}
     >
@@ -220,6 +225,58 @@ export function QueuePanel() {
       usePlayerStore.setState({ queueDisplayItems: [] })
     }
   }, [])
+
+  useEffect(() => {
+    if (!currentTrack) return
+
+    const store = usePlayerStore.getState() as any
+    const currentKey = trackKey(currentTrack)
+
+    const savedDisplayItems = ((store.queueDisplayItems ?? []) as QueueDisplayItem[]).filter(
+      (item) => Boolean(item.queueItemId),
+    )
+
+    const manualQueuedItems = ((store.queuedTracks ?? []) as QueueDisplayItem[]).map(
+      (item, index) => ({
+        ...item,
+        queueItemId:
+          item.queueItemId || `queued-${item.id}-${item.videoId || 'no-video'}-${index}`,
+        sourceType: 'queued' as const,
+      }),
+    )
+
+    const autoRecommendedItems = ((store.recommendedTracks ?? []) as Track[]).map(
+      (item, index) => ({
+        ...item,
+        queueItemId: `recommended-${item.id}-${item.videoId || 'no-video'}-${index}`,
+        sourceType: 'recommended' as const,
+      }),
+    )
+
+    const sourceItems =
+      savedDisplayItems.length > 0
+        ? savedDisplayItems
+        : [...manualQueuedItems, ...autoRecommendedItems]
+
+    if (sourceItems.length === 0) return
+
+    const remainingItems = sourceItems.filter((item) => trackKey(item) !== currentKey)
+
+    if (remainingItems.length === sourceItems.length) return
+
+    usePlayerStore.setState({
+      queueDisplayItems: remainingItems,
+      queuedTracks: remainingItems.filter((item) => item.sourceType === 'queued'),
+      recommendedTracks: remainingItems
+        .filter((item) => item.sourceType === 'recommended')
+        .map((item) => cleanTrack(item)),
+      queue: [
+        currentTrack,
+        ...remainingItems.map((item) => cleanTrack(item)),
+      ],
+      currentIndex: 0,
+    })
+  }, [currentTrack?.id, currentTrack?.videoId, currentTrack?.title])
 
   if (!isQueueOpen) return null
 
