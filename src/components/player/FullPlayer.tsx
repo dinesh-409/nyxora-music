@@ -11,6 +11,7 @@ import {
   Pause,
   Play,
   Repeat,
+  Repeat1,
 RotateCcw,
   RotateCw,
   Share2,
@@ -138,6 +139,7 @@ export function FullPlayer() {
     nextTrack,
     previousTrack,
     toggleRepeat,
+  Repeat1,
 toggleShuffle,
     setFullPlayerOpen,
     toggleLikeCurrentTrack,
@@ -435,7 +437,14 @@ toggleShuffle,
                 repeatMode !== 'off' ? 'text-emerald-400' : 'text-white'
               }`}
             >
-              <Repeat size={24} />
+              <span className="relative inline-flex">
+              {repeatMode === 'one' ? <Repeat1 size={24} /> : <Repeat size={24} />}
+              {repeatMode !== 'off' && (
+                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-black leading-none">
+                  {repeatMode === 'one' ? '1' : repeatMode === 'all' ? 'ALL' : ''}
+                </span>
+              )}
+            </span>
             </button>
           </div>
 
