@@ -24,6 +24,7 @@ import { SafeImage } from '../common/SafeImage'
 import { usePlayerStore } from '../../store/player-store'
 import { LyricsPanel } from './LyricsPanel'
 import { CurrentLyricsPreview } from './CurrentLyricsPreview'
+import { openQueuePanel } from '../../lib/open-queue'
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds)) return '0:00'
@@ -234,8 +235,8 @@ export function FullPlayer() {
   }
 
   function openQueue() {
-    usePlayerStore.setState({ isQueueOpen: true }); window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
-    window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
+    openQueuePanel()
+    openQueuePanel()
     setMenuOpen(false)
   }
 
@@ -451,7 +452,7 @@ export function FullPlayer() {
                 <Share2 size={26} />
               </button>
               <button
-                onClick={openQueue}
+                onClick={openQueuePanel}
                 className="flex h-12 w-12 items-center justify-center rounded-full active:bg-white/10"
               >
                 <ListMusic size={29} />

@@ -354,6 +354,7 @@ export function QueuePanel() {
       />
 
       <div
+        onClick={(event) => event.stopPropagation()}
         className={`absolute inset-x-0 bottom-0 mx-auto flex max-w-md flex-col rounded-t-[28px] bg-[#1f1f1f] shadow-2xl transition-all duration-300 ${
           isQueueExpanded ? 'h-[94vh]' : 'h-[72vh]'
         }`}

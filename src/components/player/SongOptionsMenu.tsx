@@ -2,6 +2,7 @@ import { CirclePlus, Clock3, Disc3, ListMusic, MinusCircle, Share2, UserRound, X
 import type { Track } from '../../types/music'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
+import { openQueuePanel } from '../../lib/open-queue'
 
 interface SongOptionsMenuProps {
   track: Track | null
@@ -49,8 +50,8 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
   }
 
   function goQueue() {
-    usePlayerStore.setState({ isQueueOpen: true }); window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
-    window.dispatchEvent(new CustomEvent('nyxora-open-queue'))
+    openQueuePanel()
+    openQueuePanel()
     onClose()
   }
 
