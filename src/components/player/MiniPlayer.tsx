@@ -1,15 +1,16 @@
-import { Pause, Play, SkipForward } from 'lucide-react'
+import { Pause, Play,
+SkipForward } from 'lucide-react'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 
 export function MiniPlayer() {
-  const {
+const {
     currentTrack,
 isPlaying,
     isLoading,
     setPlaying,
     nextTrack,
-    setFullPlayerOpen,
+setFullPlayerOpen,
   } = usePlayerStore()
 
   if (!currentTrack) {

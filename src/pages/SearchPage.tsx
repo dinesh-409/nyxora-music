@@ -14,11 +14,11 @@ import {
   searchYouTubeSongs,
   type YouTubePlaylistSummary,
 } from '../lib/youtube.functions'
-import { usePlayerStore } from '../store/player-store'
 import { useSettingsStore } from '../store/settings-store'
 import type { Track } from '../types/music'
 import { getCachedOrFallback, saveSearchCache } from '../lib/search-cache'
 import { SongOptionsMenu } from '../components/player/SongOptionsMenu'
+import { usePlayerStore } from '../store/player-store'
 
 type SearchTab = 'songs' | 'playlists'
 type SearchMode = 'home' | 'focused'
@@ -55,7 +55,6 @@ function isSameSong(a: Track, b: Track) {
   const bTitle = normalizeSongKey(b.title)
   const aArtist = normalizeSongKey(a.artist || a.channelName || '')
   const bArtist = normalizeSongKey(b.artist || b.channelName || '')
-
   return (
     aTitle === bTitle ||
     (aTitle.includes(bTitle) && bTitle.length > 4) ||
@@ -139,7 +138,7 @@ export function SearchPage() {
     }
 
     const matchingHistory = searchHistory
-      .filter((item) => item.toLowerCase().includes(clean.toLowerCase()))
+      .filter((item: string) => item.toLowerCase().includes(clean.toLowerCase()))
       .slice(0, 2)
 
     const resultSuggestions = [topSong, ...similarSongs]
@@ -339,7 +338,7 @@ export function SearchPage() {
               <p className="mt-4 text-white/50">Your recent searches will appear here.</p>
             ) : (
               <div className="mt-6 space-y-5">
-                {searchHistory.slice(0, 10).map((item, index) => (
+                {searchHistory.slice(0, 10).map((item: string, index: number) => (
                   <button
                     key={`${item}-${index}`}
                     onClick={() => chooseSuggestion(item)}
@@ -372,7 +371,7 @@ export function SearchPage() {
         ) : (
           <>
             <section className="mt-7 space-y-6">
-              {liveSuggestions.slice(0, 7).map((item, index) => (
+              {liveSuggestions.slice(0, 7).map((item: string, index: number) => (
                 <button
                   key={`${item}-${index}`}
                   onClick={() => chooseSuggestion(item)}

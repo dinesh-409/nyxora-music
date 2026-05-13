@@ -91,6 +91,7 @@ interface PlayerState {
   applySavedLyricsOffset: (trackId: string) => void
 }
 
+
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
