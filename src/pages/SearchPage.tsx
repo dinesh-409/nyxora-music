@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ArrowDownLeft,
-  ArrowLeft,
-  MoreVertical,
-  Play,
-  Search,
-  X,
-} from 'lucide-react'
+import { ArrowDownLeft, ArrowLeft, MoreVertical, Search, X } from 'lucide-react'
 import { SafeImage } from '../components/common/SafeImage'
 import {
   fetchYouTubePlaylistItems,
@@ -19,6 +12,8 @@ import type { Track } from '../types/music'
 import { getCachedOrFallback, saveSearchCache } from '../lib/search-cache'
 import { SongOptionsMenu } from '../components/player/SongOptionsMenu'
 import { usePlayerStore } from '../store/player-store'
+import { TrackLikeButton } from '../components/player/TrackLikeButton'
+import { readRecentTracks, removeRecentTrack, saveRecentTrack } from '../lib/recent-tracks'
 
 type SearchTab = 'songs' | 'playlists'
 type SearchMode = 'home' | 'focused'
@@ -86,13 +81,12 @@ export function SearchPage() {
   const [playlistLoadingId, setPlaylistLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [optionsTrack, setOptionsTrack] = useState<Track | null>(null)
+  const [recentTracks, setRecentTracks] = useState<Track[]>(() => readRecentTracks())
 
   const {
     searchHistory,
     addSearchQuery,
-    clearSearchHistory,
-    removeSearchQuery,
-    setQueue,
+setQueue,
     setPlaying,
     currentTrack,
   } = usePlayerStore()
@@ -228,8 +222,14 @@ export function SearchPage() {
     setError(null)
   }
 
+
+  function removeRecentTrackFromSearch(track: Track) {
+    setRecentTracks(removeRecentTrack(track))
+  }
+
   function playSong(track: Track, index: number) {
     const queue = songs.length ? songs : [track]
+    setRecentTracks(saveRecentTrack(track))
     addSearchQuery(query.trim() || track.title)
     setQueue(queue, index, `Search: ${query.trim() || track.title}`)
     setPlaying(true)
@@ -324,9 +324,12 @@ export function SearchPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-black">Recents</h2>
 
-              {searchHistory.length > 0 && (
+              {recentTracks.length > 0 && (
                 <button
-                  onClick={clearSearchHistory}
+                  onClick={() => {
+                    localStorage.removeItem('nyxora-recent-tracks')
+                    setRecentTracks([])
+                  }}
                   className="text-sm font-bold text-white/50"
                 >
                   Clear all
@@ -334,36 +337,50 @@ export function SearchPage() {
               )}
             </div>
 
-            {searchHistory.length === 0 ? (
-              <p className="mt-4 text-white/50">Your recent searches will appear here.</p>
+            {recentTracks.length === 0 ? (
+              <p className="mt-4 text-white/50">Your recent songs will appear here.</p>
             ) : (
-              <div className="mt-6 space-y-5">
-                {searchHistory.slice(0, 10).map((item: string, index: number) => (
-                  <button
-                    key={`${item}-${index}`}
-                    onClick={() => chooseSuggestion(item)}
-                    className="flex w-full items-center gap-4 text-left"
+              <div className="mt-6 space-y-5 pb-36">
+                {recentTracks.slice(0, 12).map((track: Track, index: number) => (
+                  <div
+                    key={`${track.id}-${track.videoId}-${index}`}
+                    className="flex w-full items-center gap-4"
                   >
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                      <Search size={25} />
-                    </div>
+                    <button
+                      onClick={() => {
+                        const realIndex = songs.findIndex((item) => item.id === track.id)
+                        playSong(track, realIndex >= 0 ? realIndex : 0)
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-4 text-left active:scale-[0.99]"
+                    >
+                      <SafeImage
+                        src={track.thumbnail}
+                        alt={track.title}
+                        className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                        loading="eager"
+                      />
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-2xl font-bold text-white">{item}</p>
-                      <p className="mt-1 text-lg text-white/50">Recent search</p>
-                    </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-2xl font-bold text-white">{track.title}</p>
+                        <p className="mt-1 truncate text-lg text-white/55">
+                          Song • {track.artist}
+                        </p>
+                      </div>
+                    </button>
+
+                    <TrackLikeButton track={track} size={25} />
 
                     <button
                       onClick={(event) => {
                         event.stopPropagation()
-                        removeSearchQuery(item)
+                        removeRecentTrackFromSearch(track)
                       }}
-                      className="text-white/55"
-                      aria-label="Remove recent search"
+                      className="text-white/55 active:text-white"
+                      aria-label="Remove recent song"
                     >
-                      <X size={30} />
+                      <X size={32} />
                     </button>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -449,7 +466,7 @@ export function SearchPage() {
                             >
                               <MoreVertical size={24} />
                             </button>
-                            <Play size={28} className="text-white/80" />
+                            <TrackLikeButton track={topSong} size={28} />
                           </div>
                         </button>
                       </div>
@@ -493,7 +510,7 @@ export function SearchPage() {
                                   >
                                     <MoreVertical size={22} />
                                   </button>
-                                  <Play size={24} className="text-white/75" />
+                                  <TrackLikeButton track={track} size={24} />
                                 </div>
                               </button>
                             )
