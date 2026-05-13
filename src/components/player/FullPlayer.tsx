@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { SafeImage } from '../common/SafeImage'
 import { usePlayerStore } from '../../store/player-store'
+import { LyricsPanel } from './LyricsPanel'
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds)) return '0:00'
@@ -177,11 +178,8 @@ export function FullPlayer() {
           </button>
         </div>
 
-        <div className="mt-8 rounded-3xl bg-white/5 p-4">
-          <p className="text-sm font-bold">Lyrics</p>
-          <p className="mt-1 text-xs text-white/55">
-            LRCLIB synced lyrics will be added in the next step.
-          </p>
+        <div className="mt-8">
+          <LyricsPanel />
         </div>
 
         <div className="mt-4 rounded-3xl bg-white/5 p-4">
