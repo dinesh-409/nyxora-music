@@ -11,6 +11,7 @@ interface PlayerState {
   currentTime: number
   duration: number
   volume: number
+  seekRequest: number | null
   repeatMode: RepeatMode
   shuffleMode: ShuffleMode
   autoplay: boolean
@@ -48,6 +49,7 @@ export const usePlayerStore = create<PlayerState>()(
       currentTime: 0,
       duration: 0,
       volume: 1,
+      seekRequest: null,
       repeatMode: 'off',
       shuffleMode: 'off',
       autoplay: true,
@@ -91,11 +93,14 @@ export const usePlayerStore = create<PlayerState>()(
           duration: Number.isFinite(duration) ? Math.max(0, duration) : 0,
         }),
 
-      seekTo: (time, source = 'player-control') =>
+      seekTo: (time, source = 'player-control') => {
+        const safeTime = Number.isFinite(time) ? Math.max(0, time) : 0
         set({
-          currentTime: Number.isFinite(time) ? Math.max(0, time) : 0,
+          currentTime: safeTime,
+          seekRequest: safeTime,
           seekSource: source,
-        }),
+        })
+      },
 
       nextTrack: () => {
         const { queue, currentIndex, repeatMode, shuffleMode } = get()

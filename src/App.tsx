@@ -6,6 +6,7 @@ import { SearchPage } from './pages/SearchPage'
 import { LibraryPage } from './pages/LibraryPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SettingsPage } from './pages/SettingsPage'
+import { AudioEngine } from './components/player/AudioEngine'
 
 const pageMap = {
   home: <HomePage />,
@@ -20,6 +21,7 @@ function App() {
 
   return (
     <MobileShell activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as keyof typeof pageMap)}>
+      <AudioEngine />
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
