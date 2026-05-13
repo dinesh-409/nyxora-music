@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ListMusic, Menu, Pause, Play, Repeat, Shuffle, Timer, X, Sparkles } from 'lucide-react'
+import { ListMusic, Menu, Pause, Play, Repeat, Repeat1, Shuffle, Timer, X, Sparkles } from 'lucide-react'
 import { usePlayerStore, type QueuedTrack } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 import { getRecommendedQueue } from '../../lib/queue-recommendations'
@@ -523,7 +523,11 @@ export function QueuePanel() {
                 repeatMode !== 'off' ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white/45'
               }`}
             >
-              <Repeat className="mx-auto mb-1" size={28} />
+              {repeatMode === 'one' ? (
+                <Repeat1 className="mx-auto mb-1" size={28} />
+              ) : (
+                <Repeat className="mx-auto mb-1" size={28} />
+              )}
               {repeatMode === 'one' ? 'Repeat 1' : repeatMode === 'all' ? 'Repeat all' : 'Repeat'}
             </button>
 
