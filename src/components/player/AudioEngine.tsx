@@ -80,7 +80,7 @@ export function AudioEngine() {
       } catch {
         // Keep player safe
       }
-    }, 700)
+    }, 300)
   }
 
   function stopProgressTimer() {
