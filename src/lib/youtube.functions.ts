@@ -198,6 +198,9 @@ export async function searchYouTubeSongs(
   const response = await fetch(url.toString())
 
   if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error('YouTube API access blocked or quota exceeded. Check API key, quota, and restrictions.')
+    }
     throw new Error(`YouTube search failed: ${response.status}`)
   }
 
@@ -241,6 +244,9 @@ export async function searchYouTubePlaylists(query: string): Promise<YouTubePlay
   const response = await fetch(url.toString())
 
   if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error('YouTube API access blocked or quota exceeded. Check API key, quota, and restrictions.')
+    }
     throw new Error(`YouTube playlist search failed: ${response.status}`)
   }
 
@@ -285,6 +291,9 @@ export async function fetchYouTubePlaylistItems(playlistId: string): Promise<Tra
   const response = await fetch(url.toString())
 
   if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error('YouTube API access blocked or quota exceeded. Check API key, quota, and restrictions.')
+    }
     throw new Error(`YouTube playlist items failed: ${response.status}`)
   }
 

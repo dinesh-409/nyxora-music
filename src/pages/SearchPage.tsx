@@ -27,6 +27,44 @@ const browsingCards = [
   { title: 'Home of I-Pop', color: 'bg-blue-900' },
 ]
 
+
+function normalizeSongKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/official music video/gi, '')
+    .replace(/official video/gi, '')
+    .replace(/official song/gi, '')
+    .replace(/full video song/gi, '')
+    .replace(/full song/gi, '')
+    .replace(/lyrics?/gi, '')
+    .replace(/audio/gi, '')
+    .replace(/4k/gi, '')
+    .replace(/hd/gi, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isSameSong(a: Track, b: Track) {
+  const aTitle = normalizeSongKey(a.title)
+  const bTitle = normalizeSongKey(b.title)
+  const aArtist = normalizeSongKey(a.artist || a.channelName || '')
+  const bArtist = normalizeSongKey(b.artist || b.channelName || '')
+
+  return (
+    aTitle === bTitle ||
+    (aTitle.includes(bTitle) && bTitle.length > 4) ||
+    (bTitle.includes(aTitle) && aTitle.length > 4)
+  ) && (
+    !aArtist ||
+    !bArtist ||
+    aArtist.includes(bArtist) ||
+    bArtist.includes(aArtist)
+  )
+}
+
 const pickedCards = [
   {
     title: 'Your Party Starts Now',
@@ -78,6 +116,17 @@ export function SearchPage() {
       .trim()
   }
 
+  const topSong = songs[0] ?? null
+
+  const similarSongs = useMemo(() => {
+    if (!topSong) return []
+
+    return songs
+      .filter((track) => track.id !== topSong.id)
+      .filter((track) => !isSameSong(track, topSong))
+      .slice(0, 12)
+  }, [songs, topSong])
+
   const liveSuggestions = useMemo(() => {
     const clean = query.trim()
 
@@ -87,10 +136,11 @@ export function SearchPage() {
 
     const matchingHistory = searchHistory
       .filter((item) => item.toLowerCase().includes(clean.toLowerCase()))
-      .slice(0, 3)
+      .slice(0, 2)
 
-    const resultSuggestions = songs
-      .map((track) => cleanSuggestionTitle(track.title))
+    const resultSuggestions = [topSong, ...similarSongs]
+      .filter(Boolean)
+      .map((track) => cleanSuggestionTitle((track as Track).title))
       .filter((title) => title.length > 1)
       .filter((title) => title.toLowerCase() !== clean.toLowerCase())
       .slice(0, 6)
@@ -101,7 +151,7 @@ export function SearchPage() {
         return item && arr.findIndex((x) => x.toLowerCase() === key) === index
       })
       .slice(0, 7)
-  }, [query, searchHistory, songs])
+  }, [query, searchHistory, topSong, similarSongs])
 
   useEffect(() => {
     if (mode !== 'focused') return
@@ -245,7 +295,12 @@ export function SearchPage() {
 
         {error && (
           <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
-            {error}
+            <p className="font-bold">{error}</p>
+            {error.includes('403') || error.toLowerCase().includes('quota') || error.toLowerCase().includes('blocked') ? (
+              <p className="mt-2 text-red-100/75">
+                If this happens often, your YouTube API quota may be finished or your API key restriction does not allow this Codespaces URL.
+              </p>
+            ) : null}
           </div>
         )}
 
@@ -346,30 +401,67 @@ export function SearchPage() {
                 ) : songs.length === 0 ? (
                   <p className="text-white/45">Live results will appear here.</p>
                 ) : (
-                  <div className="space-y-5">
-                    {songs.map((track, index) => (
-                      <button
-                        key={track.id}
-                        onClick={() => playSong(track, index)}
-                        className="flex w-full items-center gap-4 text-left active:scale-[0.99]"
-                      >
-                        <SafeImage
-                          src={track.thumbnail}
-                          alt={track.title}
-                          className="h-20 w-20 shrink-0 rounded-lg object-cover"
-                          loading="eager"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-2xl font-bold text-white">
-                            {track.title}
-                          </p>
-                          <p className="mt-1 truncate text-lg text-white/55">
-                            Song • {track.artist}
-                          </p>
+                  <div className="space-y-7">
+                    {topSong && (
+                      <div>
+                        <h2 className="mb-4 text-2xl font-black">Top result</h2>
+                        <button
+                          onClick={() => playSong(topSong, songs.findIndex((item) => item.id === topSong.id))}
+                          className="flex w-full items-center gap-4 rounded-2xl bg-white/7 p-3 text-left active:scale-[0.99]"
+                        >
+                          <SafeImage
+                            src={topSong.thumbnail}
+                            alt={topSong.title}
+                            className="h-24 w-24 shrink-0 rounded-xl object-cover"
+                            loading="eager"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 text-2xl font-black text-white">
+                              {topSong.title}
+                            </p>
+                            <p className="mt-1 truncate text-lg text-white/55">
+                              Song • {topSong.artist}
+                            </p>
+                          </div>
+                          <Play size={28} className="text-white/80" />
+                        </button>
+                      </div>
+                    )}
+
+                    {similarSongs.length > 0 && (
+                      <div>
+                        <h2 className="mb-4 text-2xl font-black">More like this</h2>
+                        <div className="space-y-5">
+                          {similarSongs.map((track) => {
+                            const realIndex = songs.findIndex((item) => item.id === track.id)
+
+                            return (
+                              <button
+                                key={track.id}
+                                onClick={() => playSong(track, realIndex >= 0 ? realIndex : 0)}
+                                className="flex w-full items-center gap-4 text-left active:scale-[0.99]"
+                              >
+                                <SafeImage
+                                  src={track.thumbnail}
+                                  alt={track.title}
+                                  className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                                  loading="eager"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-2xl font-bold text-white">
+                                    {track.title}
+                                  </p>
+                                  <p className="mt-1 truncate text-lg text-white/55">
+                                    Song • {track.artist}
+                                  </p>
+                                </div>
+                                <Play size={24} className="text-white/75" />
+                              </button>
+                            )
+                          })}
                         </div>
-                        <Play size={24} className="text-white/75" />
-                      </button>
-                    ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
