@@ -6,12 +6,13 @@ export type QueuedTrack = Track & {
   queueItemId: string
 }
 
-const makeQueueItem = (track: Track): QueuedTrack => ({
+const makeQueueItem = (track: Track): QueuedTrack & { sourceType?: 'queued' | 'recommended' } => ({
   ...track,
+  sourceType: 'queued',
   queueItemId:
     typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
-      : `${track.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      : `queued-${track.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
 })
 
 

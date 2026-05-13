@@ -127,12 +127,6 @@ function SortableQueueRow({
               <ListMusic size={12} />
             </span>
           )}
-
-          <span className="shrink-0 text-[12px] font-black uppercase tracking-wide text-emerald-400/90">
-            {isRecommended ? 'Recommended' : 'Queued'}
-          </span>
-
-          <span className="text-white/35">•</span>
           <span className="truncate">{item.artist}</span>
         </p>
       </button>
@@ -237,6 +231,19 @@ export function QueuePanel() {
 
     window.addEventListener('nyxora-open-queue', openQueue)
     return () => window.removeEventListener('nyxora-open-queue', openQueue)
+  }, [])
+
+  useEffect(() => {
+    const savedDisplayItems = (state.queueDisplayItems ?? []) as QueueDisplayItem[]
+    const hasOnlyQueued =
+      savedDisplayItems.length > 0 &&
+      savedDisplayItems.every((item) => item.sourceType === 'queued')
+
+    const hasManualQueue = queuedTracks.length > 0
+
+    if (hasOnlyQueued && !hasManualQueue) {
+      usePlayerStore.setState({ queueDisplayItems: [] })
+    }
   }, [])
 
   if (!isQueueOpen) return null
