@@ -1,15 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
-  CheckCircle2,
-  Grip,
-  MinusCircle,
-  Pause,
-  Play,
-  Repeat,
-  Shuffle,
-  Timer,
-} from 'lucide-react'
-import { usePlayerStore } from '../../store/player-store'
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { ListMusic, Menu, Pause, Play, Repeat, Shuffle, Timer, X } from 'lucide-react'
+import { usePlayerStore, type QueuedTrack } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 import { getRecommendedQueue } from '../../lib/queue-recommendations'
 import type { Track } from '../../types/music'
@@ -18,312 +24,469 @@ function toast(message: string) {
   window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: message }))
 }
 
-function formatSource(value?: string | null) {
-  if (!value) return 'Playing from Nyxora Music'
-
-  if (value.toLowerCase().startsWith('search:')) {
-    const query = value.replace(/^search:/i, '').trim()
-    return `Playing "${query}" in Search`
-  }
-
-  return `Playing from ${value}`
+function getQueueItemId(track: QueuedTrack) {
+  return track.queueItemId
 }
 
-function QueueSongRow({
+function formatPlayingText(value?: string | null, currentTrack?: Track | null) {
+  if (value?.toLowerCase().startsWith('search:')) {
+    const query = value.replace(/^search:/i, '').trim()
+    return `Playing ${query}`
+  }
+
+  if (value) return `Playing ${value}`
+
+  return currentTrack?.title ? `Playing ${currentTrack.title}` : 'Playing music'
+}
+
+function SortableQueuedRow({
   track,
-  active,
   editMode,
   onPlay,
   onRemove,
-  onReorder,
 }: {
-  track: Track
-  active?: boolean
-  editMode?: boolean
+  track: QueuedTrack
+  editMode: boolean
   onPlay: () => void
-  onRemove?: () => void
-  onReorder?: () => void
+  onRemove: () => void
 }) {
-  return (
-    <div className="flex items-center gap-4 py-3">
-      <button
-        onClick={onPlay}
-        className="flex min-w-0 flex-1 items-center gap-4 text-left"
-      >
-        <SafeImage
-          src={track.thumbnail}
-          alt={track.title}
-          className="h-16 w-16 shrink-0 rounded-md object-cover"
-          loading="eager"
-        />
+  const id = getQueueItemId(track)
 
-        <div className="min-w-0 flex-1">
-          <p
-            className={`truncate text-[22px] font-semibold leading-tight ${
-              active ? 'text-emerald-400' : 'text-white'
-            }`}
-          >
-            {active ? '▮▮ ' : ''}
-            {track.title}
-          </p>
-          <p className="mt-1 truncate text-[19px] text-white/48">{track.artist}</p>
-        </div>
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+    disabled: editMode,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 py-3 ${isDragging ? 'z-20 scale-[1.02] rounded-2xl bg-white/10 px-2' : ''}`}
+    >
+      <SafeImage
+        src={track.thumbnail}
+        alt={track.title}
+        className="h-14 w-14 shrink-0 rounded-md object-cover"
+        loading="eager"
+      />
+
+      <button
+        onClick={() => {
+          if (editMode) {
+            onRemove()
+            return
+          }
+          onPlay()
+        }}
+        className="min-w-0 flex-1 text-left"
+      >
+        <p className="truncate text-[20px] font-semibold leading-tight text-white">
+          {track.title}
+        </p>
+        <p className="mt-1 flex items-center gap-1 truncate text-[16px] text-white/60">
+          <ListMusic size={15} className="shrink-0 text-emerald-400" />
+          {track.artist}
+        </p>
       </button>
 
       {editMode ? (
         <button
           onClick={onRemove}
-          className="rounded-full p-2 text-red-300 active:bg-white/10"
-          aria-label="Remove song"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-red-300 active:bg-white/10"
+          aria-label="Remove from queue"
         >
-          <MinusCircle size={28} />
+          <X size={25} />
         </button>
       ) : (
         <button
-          onClick={onReorder}
-          className="rounded-full p-2 text-white/85 active:bg-white/10"
-          aria-label="Reorder song"
+          className="touch-none rounded-md p-2 text-white/90 active:bg-white/10"
+          aria-label="Drag to reorder"
+          {...attributes}
+          {...listeners}
         >
-          <Grip size={34} strokeWidth={2.4} />
+          <Menu size={31} />
         </button>
       )}
     </div>
   )
 }
 
+function RecommendedRow({
+  track,
+  onAdd,
+  onPlay,
+}: {
+  track: Track
+  onAdd: () => void
+  onPlay: () => void
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <SafeImage
+        src={track.thumbnail}
+        alt={track.title}
+        className="h-14 w-14 shrink-0 rounded-md object-cover"
+        loading="eager"
+      />
+
+      <button onClick={onPlay} className="min-w-0 flex-1 text-left">
+        <p className="truncate text-[20px] font-semibold leading-tight text-white">
+          {track.title}
+        </p>
+        <p className="mt-1 flex items-center gap-1 truncate text-[16px] text-white/60">
+          <span className="grid h-4 w-4 place-items-center rounded-[3px] bg-emerald-500 text-[10px] text-black">
+            ✦
+          </span>
+          {track.artist}
+        </p>
+      </button>
+
+      <button
+        onClick={onAdd}
+        className="rounded-md p-2 text-white/80 active:bg-white/10"
+        aria-label="Add recommended song to queue"
+      >
+        <Menu size={31} />
+      </button>
+    </div>
+  )
+}
+
 export function QueuePanel() {
-  const [editMode, setEditMode] = useState(false)
+  const touchStartY = useRef<number | null>(null)
 
   const {
-    queue,
-    currentIndex,
     currentTrack,
     isPlaying,
     isQueueOpen,
+    isQueueExpanded,
+    isQueueEditMode,
     playingFromTitle,
+    queuedTracks,
+    recommendedTracks,
+    queue,
     repeatMode,
     shuffleMode,
     setQueueOpen,
     setPlaying,
-    playQueueIndex,
-    removeQueueItem,
+    setQueueExpanded,
+    addTrackToQueue,
+    removeQueuedTrack,
+    clearQueuedTracks,
+    moveQueuedTrack,
+    setRecommendedTracks,
     toggleRepeat,
     toggleShuffle,
-  } = usePlayerStore()
+  } = usePlayerStore((state: any) => ({
+    currentTrack: state.currentTrack,
+    isPlaying: state.isPlaying,
+    isQueueOpen: state.isQueueOpen,
+    isQueueExpanded: state.isQueueExpanded ?? false,
+    isQueueEditMode: state.isQueueEditMode ?? false,
+    playingFromTitle: state.playingFromTitle,
+    queuedTracks: state.queuedTracks ?? [],
+    recommendedTracks: state.recommendedTracks ?? [],
+    queue: state.queue ?? [],
+    repeatMode: state.repeatMode ?? 'off',
+    shuffleMode: state.shuffleMode ?? 'off',
+    setQueueOpen: state.setQueueOpen,
+    setPlaying: state.setPlaying,
+    setQueueExpanded: state.setQueueExpanded ?? ((value: boolean) => usePlayerStore.setState({ isQueueExpanded: value })),
+    addTrackToQueue: state.addTrackToQueue,
+    removeQueuedTrack: state.removeQueuedTrack,
+    clearQueuedTracks: state.clearQueuedTracks,
+    moveQueuedTrack: state.moveQueuedTrack,
+    setRecommendedTracks: state.setRecommendedTracks,
+    toggleRepeat: state.toggleRepeat,
+    toggleShuffle: state.toggleShuffle,
+  }))
 
-  const recommended = useMemo(
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 7 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 140, tolerance: 7 },
+    }),
+  )
+
+  const fallbackRecommended = useMemo(
     () => getRecommendedQueue(currentTrack, queue),
     [currentTrack?.id, queue],
   )
 
+  const recommendations: Track[] =
+    recommendedTracks && recommendedTracks.length > 0 ? recommendedTracks : fallbackRecommended
+
+  useEffect(() => {
+    if (!currentTrack) return
+    if (recommendedTracks?.length) return
+    if (!setRecommendedTracks) return
+    setRecommendedTracks(fallbackRecommended)
+  }, [currentTrack?.id, fallbackRecommended, recommendedTracks?.length, setRecommendedTracks])
+
+  const queueItems: QueuedTrack[] = queuedTracks ?? []
+
+  const queueIds = useMemo(
+    () => queueItems.map((item) => getQueueItemId(item)),
+    [queueItems],
+  )
+
   if (!isQueueOpen) return null
 
-  function moveQueueItem(from: number, to: number) {
-    if (to < 0 || to >= queue.length) return
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-    const next = [...queue]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-
-    let nextCurrentIndex = currentIndex
-    if (from === currentIndex) nextCurrentIndex = to
-    else if (from < currentIndex && to >= currentIndex) nextCurrentIndex -= 1
-    else if (from > currentIndex && to <= currentIndex) nextCurrentIndex += 1
-
-    usePlayerStore.setState({
-      queue: next,
-      currentIndex: Math.max(0, Math.min(nextCurrentIndex, next.length - 1)),
-    })
-
-    toast('Queue order updated')
-  }
-
-  function handleReorder(index: number) {
-    // Spotify-style handle. Mobile simple behavior:
-    // tap handle to move song one step up. If it is already first non-current item, move it down.
-    const firstMovableIndex = queue.findIndex((_, itemIndex) => itemIndex !== currentIndex)
-
-    if (index === firstMovableIndex) {
-      moveQueueItem(index, index + 1)
+    if (moveQueuedTrack) {
+      moveQueuedTrack(String(active.id), String(over.id))
+      toast('Queue order updated')
       return
     }
 
-    moveQueueItem(index, index - 1)
+    const oldIndex = queueIds.indexOf(String(active.id))
+    const newIndex = queueIds.indexOf(String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const next = [...queueItems]
+    const [moved] = next.splice(oldIndex, 1)
+    next.splice(newIndex, 0, moved)
+
+    usePlayerStore.setState({ queuedTracks: next })
+    toast('Queue order updated')
   }
 
-  function addRecommendedToQueue(track: Track) {
-    usePlayerStore.setState({ queue: [...queue, { ...track }] })
-    toast(`${track.title} added to queue`)
+  function playQueuedSong(track: QueuedTrack) {
+    const normalTrack = { ...track } as Track & { queueItemId?: string }
+    delete normalTrack.queueItemId
+
+    usePlayerStore.setState({
+      currentTrack: normalTrack,
+      isPlaying: true,
+      isLoading: true,
+      currentTime: 0,
+      playerLoadKey: ((usePlayerStore.getState() as any).playerLoadKey ?? 0) + 1,
+    })
   }
 
-  function toggleShuffleOnly() {
-    toggleShuffle()
-    toast(shuffleMode === 'off' ? 'Shuffle on' : 'Shuffle off')
+  function playRecommended(track: Track) {
+    addTrackToQueue(track)
+    usePlayerStore.setState({
+      currentTrack: track,
+      isPlaying: true,
+      isLoading: true,
+      currentTime: 0,
+      playerLoadKey: ((usePlayerStore.getState() as any).playerLoadKey ?? 0) + 1,
+    })
   }
 
-  function openTimer() {
-    window.dispatchEvent(new CustomEvent('nyxora-open-sleep-timer'))
+  function removeQueueItem(track: QueuedTrack, index: number) {
+    const id = getQueueItemId(track)
+    if (removeQueuedTrack) {
+      removeQueuedTrack(id)
+    } else {
+      usePlayerStore.setState({
+        queuedTracks: queueItems.filter((_, itemIndex) => itemIndex !== index),
+      })
+    }
+  }
+
+  function clearManualQueue() {
+    if (clearQueuedTracks) {
+      clearQueuedTracks()
+    } else {
+      usePlayerStore.setState({ queuedTracks: [] })
+    }
+    toast('Queue cleared')
+  }
+
+  function toggleEditMode() {
+    usePlayerStore.setState({ isQueueEditMode: !isQueueEditMode })
+  }
+
+  function toggleExpandedFromHandle() {
+    setQueueExpanded(!isQueueExpanded)
+  }
+
+  function onHandleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    touchStartY.current = event.touches[0].clientY
+  }
+
+  function onHandleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (touchStartY.current == null) return
+
+    const endY = event.changedTouches[0].clientY
+    const diff = touchStartY.current - endY
+
+    if (diff > 30) setQueueExpanded(true)
+    if (diff < -30) setQueueExpanded(false)
+
+    touchStartY.current = null
   }
 
   return (
-    <div className="fixed inset-0 z-[85] bg-black/55 text-white backdrop-blur-sm">
+    <div className="fixed inset-0 z-[90] bg-black/45 text-white backdrop-blur-sm">
       <button
-        className="absolute inset-0 cursor-default"
+        className="absolute inset-0"
         onClick={() => setQueueOpen(false)}
         aria-label="Close queue"
       />
 
-      <div className="absolute inset-x-0 bottom-0 mx-auto flex h-[88vh] max-w-md flex-col overflow-hidden rounded-t-[2rem] bg-[#202020] shadow-2xl">
-        <div className="flex justify-center pt-4">
-          <div className="h-1.5 w-24 rounded-full bg-white/30" />
+      <div
+        className={`absolute inset-x-0 bottom-0 mx-auto flex max-w-md flex-col rounded-t-[28px] bg-[#1f1f1f] shadow-2xl transition-all duration-300 ${
+          isQueueExpanded ? 'h-[94vh]' : 'h-[72vh]'
+        }`}
+      >
+        <div className="flex justify-center pb-2 pt-3">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={toggleExpandedFromHandle}
+            onTouchStart={onHandleTouchStart}
+            onTouchEnd={onHandleTouchEnd}
+            className="h-1.5 w-16 rounded-full bg-white/40"
+          />
         </div>
 
-        <header className="flex items-start justify-between px-5 pb-7 pt-8">
+        <header className="flex items-start justify-between px-5 pt-2">
           <div className="min-w-0 flex-1">
-            <h1 className="text-[42px] font-black leading-none">Queue</h1>
-            <p className="mt-3 truncate text-[25px] text-white/58">
-              {formatSource(playingFromTitle)}
+            <h2 className="text-[30px] font-black leading-none">Queue</h2>
+            <p className="mt-2 truncate text-[17px] text-white/65">
+              {formatPlayingText(playingFromTitle, currentTrack)}
             </p>
           </div>
 
-          <button
-            onClick={() => setEditMode(!editMode)}
-            className="ml-4 rounded-full bg-white/12 px-7 py-4 text-[22px] font-black active:bg-white/20"
-          >
-            {editMode ? 'Done' : 'Edit'}
-          </button>
+          <div className="ml-3 flex items-center gap-2">
+            {queueItems.length > 0 && (
+              <button
+                onClick={clearManualQueue}
+                className="rounded-full bg-white/10 px-5 py-3 text-[16px] font-bold active:bg-white/20"
+              >
+                Clear
+              </button>
+            )}
+
+            <button
+              onClick={toggleEditMode}
+              className="rounded-full bg-white/10 px-5 py-3 text-[16px] font-bold active:bg-white/20"
+            >
+              {isQueueEditMode ? 'Done' : 'Edit'}
+            </button>
+          </div>
         </header>
 
+        <div className="px-5 pt-3">
+          <p className="text-[15px] font-bold text-white/90">
+            About <span className="font-normal text-white/65">recommendations and the impact of promotion</span>
+          </p>
+        </div>
+
         {currentTrack && (
-          <section className="border-b border-white/10 px-5 pb-7">
-            <div className="flex items-center gap-4">
-              <SafeImage
-                src={currentTrack.thumbnail}
-                alt={currentTrack.title}
-                className="h-20 w-20 rounded-md object-cover"
-                loading="eager"
-              />
+          <section className="flex items-center gap-3 px-5 py-5">
+            <SafeImage
+              src={currentTrack.thumbnail}
+              alt={currentTrack.title}
+              className="h-16 w-16 shrink-0 rounded-md object-cover"
+              loading="eager"
+            />
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[28px] font-semibold leading-tight text-emerald-400">
-                  ▮▮ {currentTrack.title}
-                </p>
-                <p className="mt-2 truncate text-[22px] text-white/55">
-                  {currentTrack.artist}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setPlaying(!isPlaying)}
-                className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-black active:scale-95"
-              >
-                {isPlaying ? <Pause size={38} fill="black" /> : <Play size={38} fill="black" />}
-              </button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[20px] font-semibold leading-tight text-emerald-400">
+                … {currentTrack.title}
+              </p>
+              <p className="mt-1 truncate text-[16px] text-white/65">
+                {currentTrack.artist}
+              </p>
             </div>
+
+            <button
+              onClick={() => setPlaying(!isPlaying)}
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-black active:scale-95"
+            >
+              {isPlaying ? <Pause size={25} fill="black" /> : <Play size={25} fill="black" />}
+            </button>
           </section>
         )}
 
-        <section className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
-          {queue.length > 1 && (
-            <>
-              <p className="mb-6 text-[28px] font-medium text-white/50">Next up</p>
-
-              <div className="space-y-1">
-                {queue.map((track, index) => {
-                  if (index === currentIndex) return null
-
-                  return (
-                    <QueueSongRow
-                      key={`${track.id}-${index}`}
-                      track={track}
-                      editMode={editMode}
-                      onPlay={() => playQueueIndex(index)}
-                      onRemove={() => removeQueueItem(index)}
-                      onReorder={() => handleReorder(index)}
-                    />
-                  )
-                })}
-              </div>
-            </>
+        <section className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
+          {queueItems.length > 0 && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={queueIds} strategy={verticalListSortingStrategy}>
+                {queueItems.map((track, index) => (
+                  <SortableQueuedRow
+                    key={getQueueItemId(track)}
+                    track={track}
+                    editMode={isQueueEditMode}
+                    onPlay={() => playQueuedSong(track)}
+                    onRemove={() => removeQueueItem(track, index)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
 
-          <div className="mt-8">
-            <p className="mb-6 text-[28px] font-medium text-white/50">
-              Next up: Recommended tracks
-            </p>
-
-            <div className="space-y-1 pb-40">
-              {recommended.map((track) => (
-                <QueueSongRow
-                  key={`recommended-${track.id}`}
-                  track={track}
-                  editMode={false}
-                  onPlay={() => {
-                    const nextQueue = [...queue, track]
-                    usePlayerStore.setState({
-                      queue: nextQueue,
-                      currentIndex: nextQueue.length - 1,
-                      currentTrack: track,
-                      currentTime: 0,
-                      isPlaying: true,
-                      isLoading: true,
-                    })
-                  }}
-                  onReorder={() => addRecommendedToQueue(track)}
-                />
-              ))}
-            </div>
-          </div>
+          {recommendations.map((track) => (
+            <RecommendedRow
+              key={`rec-${track.id}-${track.videoId}`}
+              track={track}
+              onAdd={() => {
+                addTrackToQueue(track)
+                toast(`${track.title} added to queue`)
+              }}
+              onPlay={() => playRecommended(track)}
+            />
+          ))}
         </section>
 
-        <footer className="absolute inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-[#202020] via-[#202020] to-transparent px-5 pb-5 pt-8">
-          <div className="grid grid-cols-3 gap-4">
+        <footer className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#1f1f1f] via-[#1f1f1f] to-transparent px-5 pb-5 pt-5">
+          <div className="grid grid-cols-3 gap-3">
             <button
-              onClick={toggleShuffleOnly}
-              className={`rounded-2xl px-4 py-5 text-center active:scale-95 ${
-                shuffleMode !== 'off' ? 'bg-emerald-500 text-black' : 'bg-white/12 text-white'
+              onClick={() => {
+                toggleShuffle()
+                toast(shuffleMode === 'off' ? 'Shuffle on' : 'Shuffle off')
+              }}
+              className={`rounded-2xl py-4 text-center font-semibold active:scale-95 ${
+                shuffleMode !== 'off' ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white/45'
               }`}
             >
-              <Shuffle className="mx-auto" size={34} />
-              <p className="mt-2 text-[20px] font-bold">
-                {shuffleMode !== 'off' ? 'Shuffle on' : 'Shuffle'}
-              </p>
+              <Shuffle className="mx-auto mb-1" size={28} />
+              Shuffle
             </button>
 
             <button
               onClick={toggleRepeat}
-              className={`rounded-2xl px-4 py-5 text-center active:scale-95 ${
-                repeatMode !== 'off' ? 'bg-emerald-500 text-black' : 'bg-white/12 text-white'
+              className={`rounded-2xl py-4 text-center font-semibold active:scale-95 ${
+                repeatMode !== 'off' ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white/45'
               }`}
             >
-              {repeatMode === 'one' ? (
-                <div className="relative mx-auto w-fit">
-                  <Repeat size={34} />
-                  <span className="absolute -right-2 -top-2 text-xs font-black">1</span>
-                </div>
-              ) : (
-                <Repeat className="mx-auto" size={34} />
-              )}
-              <p className="mt-2 text-[20px] font-bold">
-                {repeatMode === 'one' ? 'Repeat 1' : repeatMode === 'all' ? 'Repeat all' : 'Repeat'}
-              </p>
+              <Repeat className="mx-auto mb-1" size={28} />
+              {repeatMode === 'one' ? 'Repeat 1' : repeatMode === 'all' ? 'Repeat all' : 'Repeat'}
             </button>
 
             <button
-              onClick={openTimer}
-              className="rounded-2xl bg-white/12 px-4 py-5 text-center text-white active:scale-95"
+              onClick={() => window.dispatchEvent(new CustomEvent('nyxora-open-sleep-timer'))}
+              className="rounded-2xl bg-white/10 py-4 text-center font-semibold text-white active:scale-95"
             >
-              <Timer className="mx-auto" size={34} />
-              <p className="mt-2 text-[20px] font-bold">Timer</p>
+              <Timer className="mx-auto mb-1" size={28} />
+              Timer
             </button>
           </div>
-
-          {editMode && (
-            <div className="mt-3 flex items-center justify-center gap-2 text-sm font-bold text-white/45">
-              <CheckCircle2 size={16} />
-              Select remove icons to delete songs from queue
-            </div>
-          )}
         </footer>
       </div>
     </div>
