@@ -3,6 +3,8 @@ import type { LyricsResult } from '../lib/lyrics.functions'
 import { fetchLyrics } from '../lib/lyrics.functions'
 import type { Track } from '../types/music'
 
+const LYRICS_MATCH_VERSION = 'strict-v2'
+
 interface LyricsState {
   trackId: string | null
   lyrics: LyricsResult | null
@@ -27,7 +29,8 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
       return
     }
 
-    const cached = get().cache[track.id]
+    const cacheKey = `${LYRICS_MATCH_VERSION}:${track.id}`
+    const cached = get().cache[cacheKey]
     if (cached) {
       set({ trackId: track.id, lyrics: cached, loading: false, error: null })
       return
@@ -45,7 +48,7 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
           error: null,
           cache: {
             ...state.cache,
-            [track.id]: lyrics,
+            [cacheKey]: lyrics,
           },
         }))
       }
@@ -59,14 +62,15 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
 
   prefetchLyrics: async (track) => {
     if (!track) return
-    if (get().cache[track.id]) return
+    const cacheKey = `${LYRICS_MATCH_VERSION}:${track.id}`
+    if (get().cache[cacheKey]) return
 
     try {
       const lyrics = await fetchLyrics(track)
       set((state) => ({
         cache: {
           ...state.cache,
-          [track.id]: lyrics,
+          [cacheKey]: lyrics,
         },
       }))
     } catch {

@@ -173,6 +173,11 @@ function FiveLineLyrics({ expanded = false }: { expanded?: boolean }) {
             <p className="mt-1 text-xs font-bold text-white/45">
               Center line is synced
             </p>
+            {lyrics?.matchedTrackName && (
+              <p className="mt-1 line-clamp-1 text-[11px] font-bold text-white/35">
+                Matched: {lyrics.matchedTrackName} • {lyrics.matchedArtistName ?? 'Unknown'}
+              </p>
+            )}
           </div>
 
           {!expanded && (
