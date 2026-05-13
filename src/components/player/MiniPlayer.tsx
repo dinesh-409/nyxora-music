@@ -45,7 +45,8 @@ isPlaying,
       >
         <SafeImage
           
-          src={currentTrack.thumbnail}
+          key={`${currentTrack.id}-${currentTrack.videoId || 'no-video'}-${currentTrack.thumbnail}-mini`}
+              src={currentTrack.thumbnail}
           alt={currentTrack.title}
           className="h-12 w-12 rounded-xl object-cover"
         />

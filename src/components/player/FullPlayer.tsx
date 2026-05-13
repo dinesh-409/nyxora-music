@@ -265,7 +265,8 @@ toggleShuffle,
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-[#050507] px-4 pb-8 pt-4">
         <div className="pointer-events-none absolute inset-0">
           <SafeImage
-            src={currentTrack.thumbnail}
+            key={`${currentTrack.id}-${currentTrack.videoId || 'no-video'}-${currentTrack.thumbnail}-full`}
+              src={currentTrack.thumbnail}
             alt=""
             className="h-full w-full scale-125 object-cover opacity-35 blur-3xl"
             loading="eager"
@@ -326,7 +327,8 @@ toggleShuffle,
           <div className="pt-8">
             <div className="mx-auto aspect-square w-full max-w-[330px] overflow-hidden rounded-2xl bg-white/5 shadow-2xl">
               <SafeImage
-                src={currentTrack.thumbnail}
+                key={`${currentTrack.id}-${currentTrack.videoId || 'no-video'}-${currentTrack.thumbnail}-full`}
+              src={currentTrack.thumbnail}
                 alt={track.title}
                 className="h-full w-full object-cover"
                 loading="eager"
