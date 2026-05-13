@@ -230,6 +230,7 @@ export function FullPlayer() {
   function addQueue() {
     addCurrentTrackToQueue()
     setToast('Added to queue')
+    window.dispatchEvent(new CustomEvent('nyxora-toast', { detail: 'Added to queue' }))
     setMenuOpen(false)
   }
 

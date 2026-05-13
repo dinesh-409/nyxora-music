@@ -27,6 +27,7 @@ interface PlayerState {
   isFullPlayerOpen: boolean
   sleepTimerMinutes: number | null
   isQueueOpen: boolean
+  playerLoadKey: number
 
   setCurrentTrack: (track: Track | null, playingFromTitle?: string) => void
   setQueue: (queue: Track[], startIndex?: number, playingFromTitle?: string) => void
@@ -86,6 +87,7 @@ export const usePlayerStore = create<PlayerState>()(
       isFullPlayerOpen: false,
       sleepTimerMinutes: null,
       isQueueOpen: false,
+      playerLoadKey: 0,
 
       setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
         set({
@@ -176,6 +178,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTime: 0,
           lyricsOffset: get().savedLyricsOffsets[next.id] ?? 0,
           isLoading: true,
+          playerLoadKey: get().playerLoadKey + 1,
         })
       },
 
@@ -193,6 +196,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTime: 0,
           lyricsOffset: get().savedLyricsOffsets[previous.id] ?? 0,
           isLoading: true,
+          playerLoadKey: get().playerLoadKey + 1,
         })
       },
 
@@ -361,6 +365,7 @@ export const usePlayerStore = create<PlayerState>()(
         likedTrackIds: state.likedTrackIds,
         sleepTimerMinutes: state.sleepTimerMinutes,
         isQueueOpen: state.isQueueOpen,
+        playerLoadKey: state.playerLoadKey,
         savedLyricsOffsets: state.savedLyricsOffsets,
       }),
     },

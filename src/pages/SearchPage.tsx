@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownLeft,
   ArrowLeft,
-  ListPlus,
+  MoreVertical,
   Play,
   Search,
   X,
@@ -18,6 +18,7 @@ import { usePlayerStore } from '../store/player-store'
 import { useSettingsStore } from '../store/settings-store'
 import type { Track } from '../types/music'
 import { getCachedOrFallback, saveSearchCache } from '../lib/search-cache'
+import { SongOptionsMenu } from '../components/player/SongOptionsMenu'
 
 type SearchTab = 'songs' | 'playlists'
 type SearchMode = 'home' | 'focused'
@@ -85,6 +86,7 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [playlistLoadingId, setPlaylistLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [optionsTrack, setOptionsTrack] = useState<Track | null>(null)
 
   const {
     searchHistory,
@@ -93,7 +95,6 @@ export function SearchPage() {
     removeSearchQuery,
     setQueue,
     setPlaying,
-    addTrackToQueue,
     currentTrack,
   } = usePlayerStore()
 
@@ -442,12 +443,12 @@ export function SearchPage() {
                             <button
                               onClick={(event) => {
                                 event.stopPropagation()
-                                addTrackToQueue(topSong)
+                                setOptionsTrack(topSong)
                               }}
-                              className="rounded-full bg-white/10 p-3 text-white"
-                              aria-label="Add top result to queue"
+                              className="rounded-full p-2 text-white/75 active:bg-white/10"
+                              aria-label="Open song options"
                             >
-                              <ListPlus size={22} />
+                              <MoreVertical size={24} />
                             </button>
                             <Play size={28} className="text-white/80" />
                           </div>
@@ -486,12 +487,12 @@ export function SearchPage() {
                                   <button
                                     onClick={(event) => {
                                       event.stopPropagation()
-                                      addTrackToQueue(track)
+                                      setOptionsTrack(track)
                                     }}
-                                    className="rounded-full bg-white/10 p-2 text-white"
-                                    aria-label="Add song to queue"
+                                    className="rounded-full p-2 text-white/65 active:bg-white/10"
+                                    aria-label="Open song options"
                                   >
-                                    <ListPlus size={20} />
+                                    <MoreVertical size={22} />
                                   </button>
                                   <Play size={24} className="text-white/75" />
                                 </div>
@@ -547,6 +548,11 @@ export function SearchPage() {
             )}
           </>
         )}
+        <SongOptionsMenu
+          track={optionsTrack}
+          open={Boolean(optionsTrack)}
+          onClose={() => setOptionsTrack(null)}
+        />
       </div>
     )
   }
