@@ -30,7 +30,7 @@ function LyricsOffsetControls() {
   return (
     <div className="flex items-center gap-2 text-xs font-black text-white/75">
       <button
-        onClick={() => adjustLyricsOffset(-0.25)}
+        onClick={() => adjustLyricsOffset(-0.1)}
         className="rounded-full bg-black/25 p-2 backdrop-blur-xl"
         aria-label="Lyrics earlier"
       >
@@ -47,7 +47,7 @@ function LyricsOffsetControls() {
       </button>
 
       <button
-        onClick={() => adjustLyricsOffset(0.25)}
+        onClick={() => adjustLyricsOffset(0.1)}
         className="rounded-full bg-black/25 p-2 backdrop-blur-xl"
         aria-label="Lyrics later"
       >
@@ -118,6 +118,7 @@ function FiveLineLyrics({ expanded = false }: { expanded?: boolean }) {
         <LyricsDynamicBackground />
         <div className="relative z-10">
           <p className="text-2xl font-black">Lyrics</p>
+          <p className="mt-2 text-sm font-bold text-white/55">Preparing synced lyrics...</p>
           <div className="mt-8 space-y-5">
             <div className="mx-auto h-6 w-3/4 animate-pulse rounded-full bg-white/15" />
             <div className="mx-auto h-7 w-4/5 animate-pulse rounded-full bg-white/15" />

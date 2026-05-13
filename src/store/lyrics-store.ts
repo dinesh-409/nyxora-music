@@ -8,7 +8,9 @@ interface LyricsState {
   lyrics: LyricsResult | null
   loading: boolean
   error: string | null
+  cache: Record<string, LyricsResult>
   loadLyrics: (track: Track | null) => Promise<void>
+  prefetchLyrics: (track: Track | null) => Promise<void>
   clearLyrics: () => void
 }
 
@@ -17,6 +19,7 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
   lyrics: null,
   loading: false,
   error: null,
+  cache: {},
 
   loadLyrics: async (track) => {
     if (!track) {
@@ -24,8 +27,11 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
       return
     }
 
-    const current = get()
-    if (current.trackId === track.id && current.lyrics) return
+    const cached = get().cache[track.id]
+    if (cached) {
+      set({ trackId: track.id, lyrics: cached, loading: false, error: null })
+      return
+    }
 
     set({ trackId: track.id, loading: true, error: null })
 
@@ -33,13 +39,38 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
       const lyrics = await fetchLyrics(track)
 
       if (get().trackId === track.id) {
-        set({ lyrics, loading: false, error: null })
+        set((state) => ({
+          lyrics,
+          loading: false,
+          error: null,
+          cache: {
+            ...state.cache,
+            [track.id]: lyrics,
+          },
+        }))
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Lyrics failed'
       if (get().trackId === track.id) {
         set({ lyrics: null, loading: false, error: message })
       }
+    }
+  },
+
+  prefetchLyrics: async (track) => {
+    if (!track) return
+    if (get().cache[track.id]) return
+
+    try {
+      const lyrics = await fetchLyrics(track)
+      set((state) => ({
+        cache: {
+          ...state.cache,
+          [track.id]: lyrics,
+        },
+      }))
+    } catch {
+      // safe prefetch fail
     }
   },
 

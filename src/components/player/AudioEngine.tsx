@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import YouTube, { type YouTubeEvent, type YouTubePlayer } from 'react-youtube'
 import { usePlayerStore } from '../../store/player-store'
+import { useLyricsStore } from '../../store/lyrics-store'
 
 export function AudioEngine() {
   const playerRef = useRef<YouTubePlayer | null>(null)
@@ -8,6 +9,8 @@ export function AudioEngine() {
 
   const {
     currentTrack,
+    queue,
+    currentIndex,
     isPlaying,
     setPlaying,
     setLoading,
@@ -20,6 +23,18 @@ export function AudioEngine() {
   } = usePlayerStore()
 
   const videoId = currentTrack?.videoId
+  const prefetchLyrics = useLyricsStore((state) => state.prefetchLyrics)
+  const loadLyrics = useLyricsStore((state) => state.loadLyrics)
+
+
+  useEffect(() => {
+    loadLyrics(currentTrack ?? null)
+
+    const nextTrack = currentIndex >= 0 ? queue[currentIndex + 1] : null
+    if (nextTrack) {
+      prefetchLyrics(nextTrack)
+    }
+  }, [currentTrack?.id, currentIndex, queue, loadLyrics, prefetchLyrics])
 
   useEffect(() => {
     const player = playerRef.current
@@ -36,6 +51,16 @@ export function AudioEngine() {
     }
   }, [isPlaying, videoId])
 
+
+
+  useEffect(() => {
+    loadLyrics(currentTrack ?? null)
+
+    const nextTrack = currentIndex >= 0 ? queue[currentIndex + 1] : null
+    if (nextTrack) {
+      prefetchLyrics(nextTrack)
+    }
+  }, [currentTrack?.id, currentIndex, queue, loadLyrics, prefetchLyrics])
 
   useEffect(() => {
     const player = playerRef.current

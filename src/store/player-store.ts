@@ -18,6 +18,7 @@ interface PlayerState {
   autoplay: boolean
   seekSource: SeekSource
   lyricsOffset: number
+  savedLyricsOffsets: Record<string, number>
   playCounts: Record<string, number>
   playlistOpens: Record<string, number>
   searchHistory: string[]
@@ -49,6 +50,7 @@ interface PlayerState {
   setSleepTimer: (minutes: number | null) => void
   adjustLyricsOffset: (amount: number) => void
   resetLyricsOffset: () => void
+  applySavedLyricsOffset: (trackId: string) => void
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -69,6 +71,7 @@ export const usePlayerStore = create<PlayerState>()(
       autoplay: true,
       seekSource: 'player-control',
       lyricsOffset: 0,
+      savedLyricsOffsets: {},
       playCounts: {},
       playlistOpens: {},
       searchHistory: [],
@@ -82,7 +85,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTrack: track,
           playingFromTitle,
           currentTime: 0,
-          lyricsOffset: 0,
+          lyricsOffset: track?.id ? get().savedLyricsOffsets[track.id] ?? 0 : 0,
           isLoading: Boolean(track),
         }),
 
@@ -98,7 +101,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTrack: safeIndex >= 0 ? safeQueue[safeIndex] : null,
           playingFromTitle,
           currentTime: 0,
-          lyricsOffset: 0,
+          lyricsOffset: safeIndex >= 0 ? get().savedLyricsOffsets[safeQueue[safeIndex].id] ?? 0 : 0,
           isLoading: safeIndex >= 0,
         })
       },
@@ -164,6 +167,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentIndex: nextIndex,
           currentTrack: next,
           currentTime: 0,
+          lyricsOffset: get().savedLyricsOffsets[next.id] ?? 0,
           isLoading: true,
         })
       },
@@ -180,6 +184,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentIndex: previousIndex,
           currentTrack: previous,
           currentTime: 0,
+          lyricsOffset: get().savedLyricsOffsets[previous.id] ?? 0,
           isLoading: true,
         })
       },
@@ -246,11 +251,36 @@ export const usePlayerStore = create<PlayerState>()(
 
       adjustLyricsOffset: (amount) => {
         const current = get().lyricsOffset
-        const next = Math.max(-5, Math.min(5, Number((current + amount).toFixed(1))))
-        set({ lyricsOffset: next })
+        const next = Math.max(-30, Math.min(30, Number((current + amount).toFixed(2))))
+        const track = get().currentTrack
+
+        if (track?.id) {
+          set({
+            lyricsOffset: next,
+            savedLyricsOffsets: {
+              ...get().savedLyricsOffsets,
+              [track.id]: next,
+            },
+          })
+        } else {
+          set({ lyricsOffset: next })
+        }
       },
 
-      resetLyricsOffset: () => set({ lyricsOffset: 0 }),
+      resetLyricsOffset: () => {
+        const track = get().currentTrack
+        if (track?.id) {
+          const saved = { ...get().savedLyricsOffsets }
+          delete saved[track.id]
+          set({ lyricsOffset: 0, savedLyricsOffsets: saved })
+        } else {
+          set({ lyricsOffset: 0 })
+        }
+      },
+
+      applySavedLyricsOffset: (trackId) => {
+        set({ lyricsOffset: get().savedLyricsOffsets[trackId] ?? 0 })
+      },
     }),
     {
       name: 'nyxora-player-store',
@@ -268,6 +298,7 @@ export const usePlayerStore = create<PlayerState>()(
         recentSearchItems: state.recentSearchItems,
         likedTrackIds: state.likedTrackIds,
         sleepTimerMinutes: state.sleepTimerMinutes,
+        savedLyricsOffsets: state.savedLyricsOffsets,
       }),
     },
   ),

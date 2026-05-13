@@ -119,31 +119,9 @@ function splitTitleAndArtist(title: string, fallbackArtist: string) {
   }
 }
 
-function estimateAutoOffset(track: Track, matchedDuration?: number): number {
-  const videoDuration = track.duration
-
-  if (!videoDuration || !matchedDuration) return 0
-
-  const diff = videoDuration - matchedDuration
-  const title = track.title.toLowerCase()
-
-  const looksLikeMusicVideo =
-    title.includes('official video') ||
-    title.includes('official music video') ||
-    title.includes('full video') ||
-    title.includes('music video')
-
-  const looksLikeAudio =
-    title.includes('audio') ||
-    title.includes('lyric') ||
-    title.includes('lyrics')
-
-  // If YouTube video is much longer than LRCLIB track,
-  // usually the video has intro/outro. Lyrics must run behind video time.
-  if (diff > 12 && looksLikeMusicVideo && !looksLikeAudio) {
-    return -Math.min(45, Math.max(6, diff * 0.55))
-  }
-
+function estimateAutoOffset(_track: Track, _matchedDuration?: number): number {
+  // Keep automatic offset neutral.
+  // Manual per-song saved offset handles real YouTube intro/version differences more accurately.
   return 0
 }
 
