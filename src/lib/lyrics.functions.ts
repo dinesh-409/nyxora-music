@@ -10,6 +10,8 @@ export interface LyricsResult {
   plainLyrics: string | null
   source: 'lrclib' | 'missing'
   message?: string
+  matchedDuration?: number
+  autoOffset?: number
 }
 
 interface LrclibTrack {
@@ -43,6 +45,8 @@ const badVersionWords = [
 const removePatterns = [
   /\(.*?official.*?\)/gi,
   /\[.*?official.*?\]/gi,
+  /\(.*?music video.*?\)/gi,
+  /\[.*?music video.*?\]/gi,
   /\(.*?lyric.*?\)/gi,
   /\[.*?lyric.*?\]/gi,
   /\(.*?video.*?\)/gi,
@@ -95,8 +99,8 @@ export function normalizeArtistName(artist: string): string {
 
 function splitTitleAndArtist(title: string, fallbackArtist: string) {
   const cleaned = normalizeYouTubeTitle(title)
-
   const separators = [' - ', ' – ', ' — ', '|']
+
   for (const sep of separators) {
     if (cleaned.includes(sep)) {
       const [left, right] = cleaned.split(sep).map((x) => x.trim())
@@ -115,8 +119,38 @@ function splitTitleAndArtist(title: string, fallbackArtist: string) {
   }
 }
 
-function toLyricsResult(item: LrclibTrack | null): LyricsResult | null {
+function estimateAutoOffset(track: Track, matchedDuration?: number): number {
+  const videoDuration = track.duration
+
+  if (!videoDuration || !matchedDuration) return 0
+
+  const diff = videoDuration - matchedDuration
+  const title = track.title.toLowerCase()
+
+  const looksLikeMusicVideo =
+    title.includes('official video') ||
+    title.includes('official music video') ||
+    title.includes('full video') ||
+    title.includes('music video')
+
+  const looksLikeAudio =
+    title.includes('audio') ||
+    title.includes('lyric') ||
+    title.includes('lyrics')
+
+  // If YouTube video is much longer than LRCLIB track,
+  // usually the video has intro/outro. Lyrics must run behind video time.
+  if (diff > 12 && looksLikeMusicVideo && !looksLikeAudio) {
+    return -Math.min(45, Math.max(6, diff * 0.55))
+  }
+
+  return 0
+}
+
+function toLyricsResult(item: LrclibTrack | null, track: Track): LyricsResult | null {
   if (!item) return null
+
+  const autoOffset = estimateAutoOffset(track, item.duration)
 
   if (item.syncedLyrics) {
     const lines = parseLrc(item.syncedLyrics)
@@ -127,6 +161,8 @@ function toLyricsResult(item: LrclibTrack | null): LyricsResult | null {
         lines,
         plainLyrics: item.plainLyrics ?? null,
         source: 'lrclib',
+        matchedDuration: item.duration,
+        autoOffset,
       }
     }
   }
@@ -137,25 +173,24 @@ function toLyricsResult(item: LrclibTrack | null): LyricsResult | null {
       lines: [],
       plainLyrics: item.plainLyrics,
       source: 'lrclib',
+      matchedDuration: item.duration,
+      autoOffset,
     }
   }
 
   return null
 }
 
-async function tryExactGet(title: string, artist: string, duration?: number): Promise<LyricsResult | null> {
+async function tryExactGet(title: string, artist: string, track: Track): Promise<LyricsResult | null> {
   const params = new URLSearchParams()
   params.set('track_name', title)
   if (artist) params.set('artist_name', artist)
-  if (duration && Number.isFinite(duration)) {
-    params.set('duration', String(Math.round(duration)))
-  }
 
   const response = await fetch(`${LRCLIB_API_BASE}/get?${params.toString()}`)
   if (!response.ok) return null
 
   const data = (await response.json()) as LrclibTrack
-  return toLyricsResult(data)
+  return toLyricsResult(data, track)
 }
 
 async function searchLrclib(query: string): Promise<LrclibTrack[]> {
@@ -169,7 +204,7 @@ async function searchLrclib(query: string): Promise<LrclibTrack[]> {
   return Array.isArray(data) ? data : []
 }
 
-function scoreLyricsCandidate(item: LrclibTrack, title: string, artist: string, duration?: number): number {
+function scoreLyricsCandidate(item: LrclibTrack, title: string, artist: string, track: Track): number {
   const itemTitle = (item.trackName ?? '').toLowerCase()
   const itemArtist = (item.artistName ?? '').toLowerCase()
   const itemAlbum = (item.albumName ?? '').toLowerCase()
@@ -179,26 +214,36 @@ function scoreLyricsCandidate(item: LrclibTrack, title: string, artist: string, 
 
   let score = 0
 
-  if (itemTitle === wantedTitle) score += 160
-  else if (itemTitle.includes(wantedTitle)) score += 90
+  if (itemTitle === wantedTitle) score += 180
+  else if (itemTitle.includes(wantedTitle)) score += 95
   else if (wantedTitle.includes(itemTitle) && itemTitle.length >= 4) score += 70
 
-  if (wantedArtist && itemArtist === wantedArtist) score += 100
-  else if (wantedArtist && itemArtist.includes(wantedArtist)) score += 75
-  else if (wantedArtist && wantedArtist.includes(itemArtist) && itemArtist.length >= 4) score += 45
+  if (wantedArtist && itemArtist === wantedArtist) score += 120
+  else if (wantedArtist && itemArtist.includes(wantedArtist)) score += 85
+  else if (wantedArtist && wantedArtist.includes(itemArtist) && itemArtist.length >= 4) score += 50
 
-  if (item.syncedLyrics) score += 40
+  if (item.syncedLyrics) score += 60
   if (item.plainLyrics) score += 15
 
-  if (duration && item.duration) {
-    const diff = Math.abs(item.duration - duration)
+  const videoDuration = track.duration
+  if (videoDuration && item.duration) {
+    const diff = Math.abs(videoDuration - item.duration)
 
-    if (diff <= 1) score += 90
-    else if (diff <= 3) score += 70
-    else if (diff <= 6) score += 45
-    else if (diff <= 10) score += 20
-    else if (diff > 20) score -= 80
-    else if (diff > 12) score -= 40
+    // Exact duration match best.
+    if (diff <= 1) score += 100
+    else if (diff <= 3) score += 80
+    else if (diff <= 6) score += 55
+    else if (diff <= 12) score += 25
+
+    // But official videos can be longer than lyrics audio.
+    const titleLower = track.title.toLowerCase()
+    const likelyVideoIntro =
+      videoDuration > item.duration &&
+      videoDuration - item.duration <= 80 &&
+      (titleLower.includes('official video') || titleLower.includes('music video'))
+
+    if (likelyVideoIntro) score += 35
+    else if (diff > 25) score -= 70
   }
 
   for (const word of badVersionWords) {
@@ -206,16 +251,14 @@ function scoreLyricsCandidate(item: LrclibTrack, title: string, artist: string, 
     const wantedHasBadWord = wantedTitle.includes(word)
 
     if (candidateHasBadWord && !wantedHasBadWord) {
-      score -= 60
+      score -= 80
     }
   }
-
-  if (!item.syncedLyrics && item.plainLyrics) score -= 10
 
   return score
 }
 
-async function trySearchFallback(title: string, artist: string, duration?: number): Promise<LyricsResult | null> {
+async function trySearchFallback(title: string, artist: string, track: Track): Promise<LyricsResult | null> {
   const queries = [
     `${title} ${artist}`.trim(),
     `${artist} ${title}`.trim(),
@@ -228,12 +271,12 @@ async function trySearchFallback(title: string, artist: string, duration?: numbe
     const best = results
       .map((item) => ({
         item,
-        score: scoreLyricsCandidate(item, title, artist, duration),
+        score: scoreLyricsCandidate(item, title, artist, track),
       }))
       .sort((a, b) => b.score - a.score)[0]
 
-    if (best && best.score >= 75) {
-      const result = toLyricsResult(best.item)
+    if (best && best.score >= 80) {
+      const result = toLyricsResult(best.item, track)
       if (result) return result
     }
   }
@@ -249,6 +292,7 @@ export async function fetchLyrics(track: Track): Promise<LyricsResult> {
       plainLyrics: null,
       source: 'missing',
       message: 'Lyrics not available for this song',
+      autoOffset: 0,
     }
   }
 
@@ -257,13 +301,12 @@ export async function fetchLyrics(track: Track): Promise<LyricsResult> {
 
   const title = split.title
   const artist = split.artist || normalizeArtistName(fallbackArtist)
-  const duration = track.duration
 
   try {
-    const exact = await tryExactGet(title, artist, duration)
+    const exact = await tryExactGet(title, artist, track)
     if (exact) return exact
 
-    const fallback = await trySearchFallback(title, artist, duration)
+    const fallback = await trySearchFallback(title, artist, track)
     if (fallback) return fallback
 
     return {
@@ -272,6 +315,7 @@ export async function fetchLyrics(track: Track): Promise<LyricsResult> {
       plainLyrics: null,
       source: 'missing',
       message: 'Lyrics not available for this song',
+      autoOffset: 0,
     }
   } catch (error) {
     console.warn('Lyrics fetch failed safely:', error)
@@ -282,6 +326,7 @@ export async function fetchLyrics(track: Track): Promise<LyricsResult> {
       plainLyrics: null,
       source: 'missing',
       message: 'Lyrics not available for this song',
+      autoOffset: 0,
     }
   }
 }

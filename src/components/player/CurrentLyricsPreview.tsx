@@ -13,7 +13,7 @@ export function CurrentLyricsPreview() {
     loadLyrics(currentTrack)
   }, [currentTrack?.id, loadLyrics])
 
-  const adjustedTime = currentTime + lyricsOffset
+  const adjustedTime = currentTime + lyricsOffset + (lyrics?.autoOffset ?? 0)
 
   const activeIndex = useMemo(() => {
     if (!lyrics?.lines?.length) return -1

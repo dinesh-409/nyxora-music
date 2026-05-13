@@ -77,7 +77,7 @@ function FiveLineLyrics({ expanded = false }: { expanded?: boolean }) {
     loadLyrics(currentTrack)
   }, [currentTrack?.id, loadLyrics])
 
-  const adjustedTime = currentTime + lyricsOffset
+  const adjustedTime = currentTime + lyricsOffset + (lyrics?.autoOffset ?? 0)
 
   const activeIndex = useMemo(() => {
     if (!lyrics?.lines?.length) return -1
@@ -201,7 +201,7 @@ function FiveLineLyrics({ expanded = false }: { expanded?: boolean }) {
             return (
               <button
                 key={`${line.time}-${index}`}
-                onClick={() => seekTo(Math.max(0, line.time - lyricsOffset), 'lyrics')}
+                onClick={() => seekTo(Math.max(0, line.time - lyricsOffset - (lyrics?.autoOffset ?? 0)), 'lyrics')}
                 className={`w-full transition-all duration-300 ${
                   isActive
                     ? 'scale-100 opacity-100'
