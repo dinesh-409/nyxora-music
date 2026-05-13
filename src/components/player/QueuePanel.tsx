@@ -117,15 +117,23 @@ function SortableQueueRow({
         <p className="truncate text-[20px] font-semibold leading-tight text-white">
           {item.title}
         </p>
-        <p className="mt-1 flex items-center gap-1 truncate text-[16px] text-white/60">
+        <p className="mt-1 flex items-center gap-1.5 truncate text-[16px] text-white/60">
           {isRecommended ? (
-            <span className="grid h-4 w-4 place-items-center rounded-[3px] bg-emerald-500 text-[10px] text-black">
+            <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[3px] bg-emerald-500 text-[10px] font-black text-black">
               ✦
             </span>
           ) : (
-            <ListMusic size={15} className="shrink-0 text-emerald-400" />
+            <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[3px] border border-emerald-400 text-emerald-400">
+              <ListMusic size={12} />
+            </span>
           )}
-          {item.artist}
+
+          <span className="shrink-0 text-[12px] font-black uppercase tracking-wide text-emerald-400/90">
+            {isRecommended ? 'Recommended' : 'Queued'}
+          </span>
+
+          <span className="text-white/35">•</span>
+          <span className="truncate">{item.artist}</span>
         </p>
       </button>
 
@@ -165,7 +173,7 @@ export function QueuePanel() {
   const repeatMode = state.repeatMode ?? 'off'
   const shuffleMode = state.shuffleMode ?? 'off'
 
-  const queuedTracks = ((state.queuedTracks ?? []) as QueuedTrack[]).filter((item) =>
+  const queuedTracks = ((state.queuedTracks ?? []) as QueueDisplayItem[]).filter((item) =>
     Boolean(item.queueItemId),
   )
 
@@ -185,7 +193,7 @@ export function QueuePanel() {
     const queuedItems: QueueDisplayItem[] = queuedTracks.map((track, index) => ({
       ...track,
       queueItemId: track.queueItemId || `queued-${track.id}-${track.videoId || 'no-video'}-${index}`,
-      sourceType: 'queued' as const,
+      sourceType: track.sourceType ?? 'queued',
     }))
 
     const queuedKeys = new Set(
@@ -220,10 +228,11 @@ export function QueuePanel() {
   if (!isQueueOpen) return null
 
   function syncDisplayItemsToQueue(items: QueueDisplayItem[]) {
-    const normalizedQueuedTracks: QueuedTrack[] = items.map((item) => ({
+    const normalizedQueuedTracks = items.map((item) => ({
       ...cleanTrack(item),
       queueItemId: item.queueItemId,
-    }))
+      sourceType: item.sourceType,
+    })) as QueueDisplayItem[]
 
     usePlayerStore.setState({
       queuedTracks: normalizedQueuedTracks,
@@ -264,10 +273,11 @@ export function QueuePanel() {
     const selectedTrack = cleanTrack(selected)
     const nextDisplayItems = displayItems.filter((_, itemIndex) => itemIndex !== index)
 
-    const nextQueuedTracks: QueuedTrack[] = nextDisplayItems.map((item) => ({
+    const nextQueuedTracks = nextDisplayItems.map((item) => ({
       ...cleanTrack(item),
       queueItemId: item.queueItemId,
-    }))
+      sourceType: item.sourceType,
+    })) as QueueDisplayItem[]
 
     usePlayerStore.setState({
       currentTrack: selectedTrack,
