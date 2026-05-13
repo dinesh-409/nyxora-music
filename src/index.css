@@ -43,3 +43,28 @@ input {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+.nyxora-player-range {
+  appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  outline: none;
+}
+
+.nyxora-player-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.nyxora-player-range::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+}

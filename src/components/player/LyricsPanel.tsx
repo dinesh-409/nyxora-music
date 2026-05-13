@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Minus, Plus, RotateCcw } from 'lucide-react'
+import { Expand, Minus, Plus, RotateCcw, Share2 } from 'lucide-react'
 import { getActiveLyricIndex } from '../../lib/lrc'
 import { useLyricsStore } from '../../store/lyrics-store'
 import { usePlayerStore } from '../../store/player-store'
@@ -48,8 +48,7 @@ export function LyricsPanel() {
 
     if (!container || !line) return
 
-    // Keep current line slightly above middle so next 1-2 lines are visible.
-    const top = line.offsetTop - container.clientHeight * 0.32
+    const top = line.offsetTop - container.clientHeight * 0.18
 
     container.scrollTo({
       top: Math.max(0, top),
@@ -59,20 +58,20 @@ export function LyricsPanel() {
 
   if (!currentTrack) {
     return (
-      <div className="rounded-3xl bg-white/5 p-4">
-        <p className="text-sm font-bold">Lyrics</p>
-        <p className="mt-2 text-sm text-white/55">Play a song to view lyrics.</p>
+      <div className="rounded-[1.7rem] bg-white/8 p-5">
+        <p className="text-2xl font-black">Lyrics</p>
+        <p className="mt-4 text-base text-white/55">Play a song to view lyrics.</p>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="rounded-3xl bg-white/5 p-4">
-        <p className="text-sm font-bold">Lyrics</p>
-        <div className="mt-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-5 animate-pulse rounded-full bg-white/10" />
+      <div className="rounded-[1.7rem] bg-white/8 p-5">
+        <p className="text-2xl font-black">Lyrics</p>
+        <div className="mt-6 space-y-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-7 animate-pulse rounded-full bg-white/10" />
           ))}
         </div>
       </div>
@@ -81,9 +80,9 @@ export function LyricsPanel() {
 
   if (!lyrics || lyrics.source === 'missing') {
     return (
-      <div className="rounded-3xl bg-white/5 p-4">
-        <p className="text-sm font-bold">Lyrics</p>
-        <p className="mt-2 text-sm text-white/55">
+      <div className="rounded-[1.7rem] bg-white/8 p-5">
+        <p className="text-2xl font-black">Lyrics</p>
+        <p className="mt-4 text-base text-white/55">
           {lyrics?.message ?? 'Lyrics not available for this song'}
         </p>
       </div>
@@ -92,9 +91,15 @@ export function LyricsPanel() {
 
   if (!lyrics.synced && lyrics.plainLyrics) {
     return (
-      <div className="rounded-3xl bg-white/5 p-4">
-        <p className="text-sm font-bold">Lyrics</p>
-        <div className="mt-4 max-h-80 overflow-y-auto whitespace-pre-line rounded-2xl bg-black/20 p-4 text-sm leading-7 text-white/80">
+      <div className="rounded-[1.7rem] bg-[#0c6172]/70 p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <p className="text-2xl font-black">Lyrics</p>
+          <button className="rounded-full bg-black/20 p-3">
+            <Expand size={19} />
+          </button>
+        </div>
+
+        <div className="mt-6 max-h-96 overflow-y-auto whitespace-pre-line text-2xl font-black leading-snug text-white">
           {lyrics.plainLyrics}
         </div>
       </div>
@@ -102,72 +107,54 @@ export function LyricsPanel() {
   }
 
   const currentLine = activeIndex >= 0 ? lyrics.lines[activeIndex] : null
-  const nextLine = activeIndex >= 0 ? lyrics.lines[activeIndex + 1] : null
 
   return (
-    <div className="rounded-3xl bg-white/5 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold">Lyrics</p>
-          <p className="mt-1 text-xs text-white/45">
-            Current + next line stays visible
-          </p>
-        </div>
+    <div className="rounded-[1.7rem] bg-[#0c6172]/70 p-5 shadow-xl">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-2xl font-black">Lyrics</p>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => adjustLyricsOffset(-0.5)}
-            className="rounded-full bg-white/10 p-2"
-            title="Lyrics earlier"
-          >
-            <Minus size={14} />
+          <button className="rounded-full bg-black/25 p-3">
+            <Share2 size={18} />
           </button>
-          <button
-            onClick={resetLyricsOffset}
-            className="rounded-full bg-white/10 px-2 py-2 text-[11px] font-bold"
-            title="Reset lyrics offset"
-          >
-            {lyricsOffset === 0 ? '0.0s' : `${lyricsOffset > 0 ? '+' : ''}${lyricsOffset.toFixed(1)}s`}
-          </button>
-          <button
-            onClick={() => adjustLyricsOffset(0.5)}
-            className="rounded-full bg-white/10 p-2"
-            title="Lyrics later"
-          >
-            <Plus size={14} />
-          </button>
-          <button
-            onClick={resetLyricsOffset}
-            className="rounded-full bg-white/10 p-2"
-            title="Reset"
-          >
-            <RotateCcw size={14} />
+          <button className="rounded-full bg-black/25 p-3">
+            <Expand size={18} />
           </button>
         </div>
       </div>
 
+      <div className="mb-4 flex items-center gap-2 text-xs font-black text-white/70">
+        <button onClick={() => adjustLyricsOffset(-0.5)} className="rounded-full bg-black/20 p-2">
+          <Minus size={13} />
+        </button>
+        <button onClick={resetLyricsOffset} className="rounded-full bg-black/20 px-3 py-2">
+          {lyricsOffset === 0 ? '0.0s' : `${lyricsOffset > 0 ? '+' : ''}${lyricsOffset.toFixed(1)}s`}
+        </button>
+        <button onClick={() => adjustLyricsOffset(0.5)} className="rounded-full bg-black/20 p-2">
+          <Plus size={13} />
+        </button>
+        <button onClick={resetLyricsOffset} className="rounded-full bg-black/20 p-2">
+          <RotateCcw size={13} />
+        </button>
+      </div>
+
       {currentLine && (
-        <div className="mt-4 rounded-2xl bg-black/20 p-4 text-center">
-          <p className="line-clamp-2 text-lg font-black text-emerald-400">
-            {currentLine.text}
-          </p>
-          <p className="mt-2 line-clamp-2 text-sm font-bold text-white/55">
-            {nextLine?.text ?? ' '}
-          </p>
-        </div>
+        <p className="mb-5 text-3xl font-black leading-tight text-white">
+          {currentLine.text}
+        </p>
       )}
 
       <div
         ref={containerRef}
-        className="mt-4 max-h-96 overflow-y-auto rounded-2xl bg-black/20 p-4"
+        className="max-h-[310px] overflow-y-auto pr-1"
         onPointerDown={(event) => event.stopPropagation()}
         onTouchStart={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="space-y-5 pb-28 pt-8">
+        <div className="space-y-5 pb-24">
           {lyrics.lines.map((line, index) => {
             const active = index === activeIndex
-            const next = index === activeIndex + 1
+            const next = index === activeIndex + 1 || index === activeIndex + 2
 
             return (
               <button
@@ -181,10 +168,10 @@ export function LyricsPanel() {
                 }}
                 className={`block w-full text-left transition ${
                   active
-                    ? 'text-xl font-black text-emerald-400'
+                    ? 'hidden'
                     : next
-                      ? 'text-lg font-bold text-white/75'
-                      : 'text-base font-bold text-white/35'
+                      ? 'text-2xl font-black leading-tight text-cyan-300'
+                      : 'text-xl font-black leading-tight text-cyan-300/55'
                 }`}
               >
                 {line.text}
