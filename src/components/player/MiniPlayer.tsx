@@ -1,9 +1,10 @@
-import { Pause, Play,
-SkipForward } from 'lucide-react'
+import { useState } from 'react'
+import { Pause, Play, SkipForward, Heart, SkipBack } from 'lucide-react'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 
 export function MiniPlayer() {
+  const [miniLiked, setMiniLiked] = useState(false)
 const {
     currentTrack,
 isPlaying,
@@ -58,6 +59,36 @@ setFullPlayerOpen,
             {isLoading ? 'Loading...' : currentTrack.artist}
           </p>
         </div>
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              usePlayerStore.getState().previousTrack()
+            }}
+            className="rounded-full bg-white/10 p-2 text-white active:bg-white/20"
+            aria-label="Previous song"
+          >
+            <SkipBack size={18} fill="currentColor" />
+          </button>
+
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              setMiniLiked((value: boolean) => !value)
+              window.dispatchEvent(
+                new CustomEvent('nyxora-toast', {
+                  detail: miniLiked ? 'Removed from liked songs' : 'Added to liked songs',
+                }),
+              )
+            }}
+            className={`rounded-full p-2 active:bg-white/20 ${
+              miniLiked ? 'bg-emerald-400 text-black' : 'bg-white/10 text-white'
+            }`}
+            aria-label="Like song"
+          >
+            <Heart size={18} fill={miniLiked ? 'currentColor' : 'none'} />
+          </button>
+
+
 
         <button
           onClick={(event) => {
