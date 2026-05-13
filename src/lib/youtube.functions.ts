@@ -1,7 +1,7 @@
 import type { Track } from '../types/music'
 import type { YouTubePlaylistItem, YouTubeSearchItem } from '../types/youtube'
 import { FALLBACK_COVER } from './constants'
-import { detectQueryLanguage, enhanceMusicQuery } from './language-detector'
+import { detectQueryLanguage } from './language-detector'
 import { rankTracks } from './search-ranker'
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
@@ -185,7 +185,7 @@ export async function searchYouTubeSongs(
   }
 
   const detectedLanguage = detectQueryLanguage(clean)
-  const enhancedQuery = enhanceMusicQuery(clean, detectedLanguage)
+  const enhancedQuery = clean
 
   const url = new URL(`${YOUTUBE_API_BASE}/search`)
   url.searchParams.set('part', 'snippet')

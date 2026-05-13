@@ -60,26 +60,17 @@ export function SearchPage() {
   const hasYouTubeKey = Boolean(import.meta.env.VITE_YOUTUBE_API_KEY)
 
   const liveSuggestions = useMemo(() => {
-    const clean = query.trim().toLowerCase()
+    const clean = query.trim()
 
     if (!clean) {
       return searchHistory.slice(0, 8)
     }
 
-    const suggestions = [
-      clean,
-      `${clean} song`,
-      `${clean} official`,
-      `${clean} lyrics`,
-      `${clean} live`,
-      `${clean} remix`,
-    ]
+    const matchingHistory = searchHistory
+      .filter((item) => item.toLowerCase().includes(clean.toLowerCase()))
+      .slice(0, 4)
 
-    const languageSuggestions = listeningLanguages
-      .slice(0, 2)
-      .map((language) => `${clean} ${language}`)
-
-    return [...suggestions, ...languageSuggestions]
+    return [clean, ...matchingHistory]
       .filter((item, index, arr) => item && arr.indexOf(item) === index)
   }, [query, searchHistory])
 
@@ -281,7 +272,7 @@ export function SearchPage() {
         ) : (
           <>
             <section className="mt-7 space-y-6">
-              {liveSuggestions.slice(0, 5).map((item, index) => (
+              {liveSuggestions.slice(0, 3).map((item, index) => (
                 <button
                   key={`${item}-${index}`}
                   onClick={() => chooseSuggestion(item)}
