@@ -76,7 +76,9 @@ function SortableQueueRow({
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? undefined : transition,
+    willChange: 'transform',
+    touchAction: 'none',
   }
 
   const isRecommended = item.sourceType === 'recommended' || item.queueItemId.startsWith('recommended-')
@@ -85,8 +87,8 @@ function SortableQueueRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 py-3 transition-all duration-300 ${
-        isDragging ? 'z-50 scale-[1.02] rounded-2xl bg-white/10 px-2 shadow-2xl' : ''
+      className={`flex translate-z-0 items-center gap-3 py-3 transition-transform duration-150 ${
+        isDragging ? 'z-50 scale-[1.015] rounded-2xl bg-white/10 px-2 shadow-lg' : ''
       }`}
     >
       <SafeImage
@@ -130,8 +132,8 @@ function SortableQueueRow({
         </button>
       ) : (
         <button
-          className="cursor-grab touch-none select-none rounded-md p-2 text-white/90 active:cursor-grabbing active:bg-white/10"
-          style={{ touchAction: 'none' }}
+          className="cursor-grab touch-none select-none rounded-md p-3 text-white/90 active:cursor-grabbing active:bg-white/10"
+          style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
           aria-label="Press and hold to reorder"
           {...attributes}
           {...listeners}
@@ -197,10 +199,10 @@ export function QueuePanel() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      activationConstraint: { distance: 3 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 140, tolerance: 6 },
+      activationConstraint: { delay: 60, tolerance: 4 },
     }),
   )
 
@@ -475,7 +477,7 @@ export function QueuePanel() {
           </section>
         )}
 
-        <section className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
+        <section className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-28 [scrollbar-width:none]">
           {displayItems.length > 0 && (
             <DndContext
               sensors={sensors}
