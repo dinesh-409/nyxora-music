@@ -5,7 +5,7 @@ import { SafeImage } from '../common/SafeImage'
 export function MiniPlayer() {
   const {
     currentTrack,
-    isPlaying,
+isPlaying,
     isLoading,
     setPlaying,
     nextTrack,
@@ -44,6 +44,7 @@ export function MiniPlayer() {
         className="nyxora-glass flex w-full items-center gap-3 rounded-2xl p-3 text-left"
       >
         <SafeImage
+          
           src={currentTrack.thumbnail}
           alt={currentTrack.title}
           className="h-12 w-12 rounded-xl object-cover"

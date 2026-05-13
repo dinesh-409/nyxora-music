@@ -131,10 +131,9 @@ export const usePlayerStore = create<PlayerState>()(
       setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
         set({
           currentTrack: track,
-          playingFromTitle,
           currentTime: 0,
+          isLoading: true, playingFromTitle,
           lyricsOffset: track?.id ? get().savedLyricsOffsets[track.id] ?? 0 : 0,
-          isLoading: Boolean(track),
         }),
 
       setPlayingFromTitle: (title) => set({ playingFromTitle: title || 'Nyxora Music' }),
@@ -181,12 +180,17 @@ export const usePlayerStore = create<PlayerState>()(
         const { queue, currentIndex, repeatMode, shuffleMode } = get()
 
         if (!queue.length) {
-          set({ currentTrack: null, currentIndex: -1, isPlaying: false, currentTime: 0 })
+          set({
+          currentTrack: null,
+          currentTime: 0,
+          isLoading: true, currentIndex: -1, isPlaying: false })
           return
         }
 
         if (repeatMode === 'one' && queue[currentIndex]) {
-          set({ currentTrack: queue[currentIndex], currentTime: 0, isLoading: true })
+          set({
+          currentTrack: queue[currentIndex],
+          isLoading: true })
           return
         }
 
@@ -216,9 +220,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTrack: next,
           currentTime: 0,
           lyricsOffset: get().savedLyricsOffsets[next.id] ?? 0,
-          isLoading: true,
-          playerLoadKey: get().playerLoadKey + 1,
-        })
+          isLoading: true, })
       },
 
       previousTrack: () => {
@@ -234,9 +236,7 @@ export const usePlayerStore = create<PlayerState>()(
           currentTrack: previous,
           currentTime: 0,
           lyricsOffset: get().savedLyricsOffsets[previous.id] ?? 0,
-          isLoading: true,
-          playerLoadKey: get().playerLoadKey + 1,
-        })
+          isLoading: true, })
       },
 
       toggleRepeat: () => {

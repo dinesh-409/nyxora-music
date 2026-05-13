@@ -124,7 +124,7 @@ export function FullPlayer() {
 
   const {
     currentTrack,
-    playingFromTitle,
+playingFromTitle,
     isPlaying,
     isLoading,
     currentTime,
