@@ -67,7 +67,7 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
     { icon: Disc3, label: 'Go to album', action: () => placeholder('Album page coming next') },
     { icon: UserRound, label: 'Go to artist', action: () => placeholder('Artist page coming next') },
     { divider: true, icon: MinusCircle, label: 'Exclude track from your taste profile', action: () => placeholder('Excluded from taste profile locally') },
-    { icon: Clock3, label: 'Sleep timer', action: () => placeholder('Sleep timer is available in full player') },
+    { icon: Clock3, label: 'Sleep timer', action: () => { window.dispatchEvent(new CustomEvent('nyxora-open-sleep-timer')); onClose() } },
   ]
 
   return (
