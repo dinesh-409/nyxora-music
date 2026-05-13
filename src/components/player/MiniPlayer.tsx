@@ -23,6 +23,7 @@ export function MiniPlayer() {
             src="/logo.png"
             alt="Nyxora Music"
             className="h-12 w-12 rounded-xl object-cover"
+            loading="eager"
           />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">No song playing</p>

@@ -5,9 +5,10 @@ interface SafeImageProps {
   src?: string | null
   alt: string
   className?: string
+  loading?: 'lazy' | 'eager'
 }
 
-export function SafeImage({ src, alt, className }: SafeImageProps) {
+export function SafeImage({ src, alt, className, loading = 'lazy' }: SafeImageProps) {
   const [failed, setFailed] = useState(false)
   const safeSrc = !failed && src ? src : FALLBACK_COVER
 
@@ -16,7 +17,9 @@ export function SafeImage({ src, alt, className }: SafeImageProps) {
       src={safeSrc}
       alt={alt}
       className={className}
-      loading="lazy"
+      loading={loading}
+      decoding="async"
+      draggable={false}
       onError={() => setFailed(true)}
     />
   )

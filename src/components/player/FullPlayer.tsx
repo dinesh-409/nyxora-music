@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ChevronDown,
   CirclePlus,
@@ -18,6 +18,7 @@ import {
   SkipBack,
   SkipForward,
   UserRound,
+  X,
 } from 'lucide-react'
 import { SafeImage } from '../common/SafeImage'
 import { usePlayerStore } from '../../store/player-store'
@@ -33,7 +34,6 @@ function formatTime(seconds: number) {
 
 function formatPlayingFrom(value: string) {
   if (!value) return 'NYXORA MUSIC'
-
   if (value.toLowerCase().startsWith('search:')) return 'PLAYING FROM SEARCH'
   return 'PLAYING FROM'
 }
@@ -51,18 +51,21 @@ function formatPlayingFromLine(value: string, currentTitle: string) {
 
 interface PlayerMenuProps {
   onClose: () => void
+  onShare: () => void
+  onAddToQueue: () => void
+  onSleepTimer: () => void
 }
 
-function PlayerMenu({ onClose }: PlayerMenuProps) {
-  const menuItems = [
-    { icon: Share2, label: 'Share' },
-    { icon: CirclePlus, label: 'Add to playlist' },
-    { icon: ListMusic, label: 'Add to Queue' },
-    { icon: ListMusic, label: 'Go to Queue' },
-    { icon: Disc3, label: 'Go to album' },
-    { icon: UserRound, label: 'Go to artist' },
-    { divider: true, icon: MinusCircle, label: 'Exclude track from your taste profile' },
-    { icon: Clock3, label: 'Sleep timer' },
+function PlayerMenu({ onClose, onShare, onAddToQueue, onSleepTimer }: PlayerMenuProps) {
+  const items = [
+    { icon: Share2, label: 'Share', action: onShare },
+    { icon: CirclePlus, label: 'Add to playlist', action: onClose },
+    { icon: ListMusic, label: 'Add to Queue', action: onAddToQueue },
+    { icon: ListMusic, label: 'Go to Queue', action: onClose },
+    { icon: Disc3, label: 'Go to album', action: onClose },
+    { icon: UserRound, label: 'Go to artist', action: onClose },
+    { divider: true, icon: MinusCircle, label: 'Exclude track from your taste profile', action: onClose },
+    { icon: Clock3, label: 'Sleep timer', action: onSleepTimer },
   ]
 
   return (
@@ -70,12 +73,12 @@ function PlayerMenu({ onClose }: PlayerMenuProps) {
       <button
         aria-label="Close player menu"
         onClick={onClose}
-        className="fixed inset-0 z-[55] cursor-default bg-black/20"
+        className="fixed inset-0 z-[55] cursor-default bg-black/25"
       />
 
       <div className="absolute right-4 top-16 z-[60] w-[min(315px,calc(100vw-32px))] rounded-3xl border border-white/10 bg-[#171719]/95 p-3 shadow-2xl backdrop-blur-2xl">
         <div className="space-y-1">
-          {menuItems.map((item, index) => {
+          {items.map((item, index) => {
             const Icon = item.icon
 
             return (
@@ -83,7 +86,7 @@ function PlayerMenu({ onClose }: PlayerMenuProps) {
                 {item.divider && <div className="my-2 h-px bg-white/10" />}
 
                 <button
-                  onClick={onClose}
+                  onClick={item.action}
                   className="flex w-full items-center gap-4 rounded-2xl px-3 py-3 text-left text-white/90 active:bg-white/10"
                 >
                   <Icon size={24} className="shrink-0 text-white/65" />
@@ -100,6 +103,8 @@ function PlayerMenu({ onClose }: PlayerMenuProps) {
 
 export function FullPlayer() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [sleepOpen, setSleepOpen] = useState(false)
 
   const {
     currentTrack,
@@ -110,6 +115,8 @@ export function FullPlayer() {
     duration,
     repeatMode,
     shuffleMode,
+    likedTrackIds,
+    sleepTimerMinutes,
     setPlaying,
     seekTo,
     nextTrack,
@@ -117,7 +124,29 @@ export function FullPlayer() {
     toggleRepeat,
     toggleShuffle,
     setFullPlayerOpen,
+    toggleLikeCurrentTrack,
+    addCurrentTrackToQueue,
+    setSleepTimer,
   } = usePlayerStore()
+
+  const liked = currentTrack?.id ? likedTrackIds.includes(currentTrack.id) : false
+
+  useEffect(() => {
+    if (!sleepTimerMinutes) return
+
+    const timer = window.setTimeout(() => {
+      setPlaying(false)
+      setSleepTimer(null)
+    }, sleepTimerMinutes * 60 * 1000)
+
+    return () => window.clearTimeout(timer)
+  }, [sleepTimerMinutes, setPlaying, setSleepTimer])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(null), 1600)
+    return () => window.clearTimeout(timer)
+  }, [toast])
 
   if (!currentTrack) {
     return (
@@ -135,6 +164,7 @@ export function FullPlayer() {
               src="/logo.png"
               alt="Nyxora Music"
               className="mx-auto h-48 w-48 rounded-3xl object-cover"
+              loading="eager"
             />
             <h1 className="mt-6 text-2xl font-black">Nothing playing</h1>
             <p className="mt-2 text-sm text-white/55">
@@ -146,7 +176,9 @@ export function FullPlayer() {
     )
   }
 
-  const safeDuration = duration || currentTrack.duration || 0
+  const track = currentTrack
+
+  const safeDuration = duration || track.duration || 0
   const safeCurrentTime = Math.min(currentTime, safeDuration || currentTime)
   const progress = safeDuration > 0 ? Math.min(100, (safeCurrentTime / safeDuration) * 100) : 0
 
@@ -154,10 +186,49 @@ export function FullPlayer() {
     seekTo(Math.max(0, safeCurrentTime + amount), 'player-control')
   }
 
+  async function shareTrack() {
+    const track = currentTrack
+    if (!track) return
+
+    const text = ` - `
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: track.title,
+          text,
+          url: track.videoId ? `https://www.youtube.com/watch?v=${track.videoId}` : location.href,
+        })
+      } else {
+        await navigator.clipboard.writeText(
+          track.videoId ? `https://www.youtube.com/watch?v=${track.videoId}` : text,
+        )
+        setToast('Link copied')
+      }
+    } catch {
+      // user cancelled share
+    } finally {
+      setMenuOpen(false)
+    }
+  }
+
+  function addQueue() {
+    addCurrentTrackToQueue()
+    setToast('Added to queue')
+    setMenuOpen(false)
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#050507] text-white">
       <div className="relative mx-auto min-h-screen w-full max-w-md overflow-hidden bg-[#050507] px-4 pb-8 pt-4">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,#0e5f76_0%,transparent_34%),linear-gradient(180deg,rgba(27,84,94,0.38)_0%,#050507_54%,#050507_100%)]" />
+        <div className="pointer-events-none absolute inset-0">
+          <SafeImage
+            src={currentTrack.thumbnail}
+            alt=""
+            className="h-full w-full scale-125 object-cover opacity-35 blur-3xl"
+            loading="eager"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#071214]/75 to-[#050507]" />
+        </div>
 
         <div className="relative z-10">
           <div className="flex items-start justify-between">
@@ -169,11 +240,11 @@ export function FullPlayer() {
             </button>
 
             <div className="min-w-0 flex-1 px-3 pt-1 text-center">
-              <p className="text-[12px] font-bold uppercase tracking-wide text-white/80">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-white/75">
                 {formatPlayingFrom(playingFromTitle)}
               </p>
-              <p className="mt-1 truncate text-[15px] font-black text-white">
-                {formatPlayingFromLine(playingFromTitle, currentTrack.title)}
+              <p className="mt-1 truncate text-[14px] font-black text-white">
+                {formatPlayingFromLine(playingFromTitle, track.title)}
               </p>
             </div>
 
@@ -186,14 +257,31 @@ export function FullPlayer() {
             </button>
           </div>
 
-          {menuOpen && <PlayerMenu onClose={() => setMenuOpen(false)} />}
+          {menuOpen && (
+            <PlayerMenu
+              onClose={() => setMenuOpen(false)}
+              onShare={shareTrack}
+              onAddToQueue={addQueue}
+              onSleepTimer={() => {
+                setSleepOpen(true)
+                setMenuOpen(false)
+              }}
+            />
+          )}
 
-          <div className="pt-10">
-            <div className="mx-auto aspect-square w-full max-w-[335px] overflow-hidden rounded-2xl bg-white/5 shadow-2xl">
+          {toast && (
+            <div className="fixed left-1/2 top-20 z-[70] -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-black text-black shadow-xl">
+              {toast}
+            </div>
+          )}
+
+          <div className="pt-8">
+            <div className="mx-auto aspect-square w-full max-w-[330px] overflow-hidden rounded-2xl bg-white/5 shadow-2xl">
               <SafeImage
                 src={currentTrack.thumbnail}
-                alt={currentTrack.title}
+                alt={track.title}
                 className="h-full w-full object-cover"
+                loading="eager"
               />
             </div>
           </div>
@@ -203,15 +291,20 @@ export function FullPlayer() {
           <div className="mt-7 flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="line-clamp-2 text-3xl font-black leading-tight">
-                {currentTrack.title}
+                {track.title}
               </h1>
               <p className="mt-1 truncate text-xl font-semibold text-white/55">
                 {isLoading ? 'Loading...' : currentTrack.artist}
               </p>
             </div>
 
-            <button className="mt-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 border-white text-white active:scale-95">
-              <Heart size={30} />
+            <button
+              onClick={toggleLikeCurrentTrack}
+              className={`mt-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 active:scale-95 ${
+                liked ? 'border-emerald-400 bg-emerald-400 text-black' : 'border-white text-white'
+              }`}
+            >
+              <Heart size={29} fill={liked ? 'black' : 'none'} />
             </button>
           </div>
 
@@ -241,62 +334,60 @@ export function FullPlayer() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-7 items-center gap-2">
+          <div className="mt-6 flex items-center justify-between gap-1">
             <button
               onClick={toggleShuffle}
-              className={`mx-auto flex h-11 w-11 items-center justify-center rounded-full ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                 shuffleMode !== 'off' ? 'text-emerald-400' : 'text-white'
               }`}
             >
-              <Shuffle size={26} />
+              <Shuffle size={24} />
             </button>
 
             <button
               onClick={() => seekRelative(-10)}
-              className="mx-auto flex h-11 w-11 items-center justify-center rounded-full text-white"
-              aria-label="Back 10 seconds"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white"
             >
-              <RotateCcw size={29} />
+              <RotateCcw size={28} />
               <span className="absolute text-[10px] font-black">10</span>
             </button>
 
             <button
               onClick={previousTrack}
-              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-white"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white"
             >
-              <SkipBack size={34} fill="white" />
+              <SkipBack size={31} fill="white" />
             </button>
 
             <button
               onClick={() => setPlaying(!isPlaying)}
-              className="mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-full bg-white text-black shadow-xl active:scale-95"
+              className="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-full bg-white text-black shadow-xl active:scale-95"
             >
-              {isPlaying ? <Pause size={34} fill="black" /> : <Play size={34} fill="black" />}
+              {isPlaying ? <Pause size={32} fill="black" /> : <Play size={32} fill="black" />}
             </button>
 
             <button
               onClick={nextTrack}
-              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-white"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white"
             >
-              <SkipForward size={34} fill="white" />
+              <SkipForward size={31} fill="white" />
             </button>
 
             <button
               onClick={() => seekRelative(10)}
-              className="mx-auto flex h-11 w-11 items-center justify-center rounded-full text-white"
-              aria-label="Forward 10 seconds"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white"
             >
-              <RotateCw size={29} />
+              <RotateCw size={28} />
               <span className="absolute text-[10px] font-black">10</span>
             </button>
 
             <button
               onClick={toggleRepeat}
-              className={`mx-auto flex h-11 w-11 items-center justify-center rounded-full ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                 repeatMode !== 'off' ? 'text-emerald-400' : 'text-white'
               }`}
             >
-              <Repeat size={26} />
+              <Repeat size={24} />
             </button>
           </div>
 
@@ -306,14 +397,57 @@ export function FullPlayer() {
             </button>
 
             <div className="flex items-center gap-6">
-              <button className="flex h-12 w-12 items-center justify-center rounded-full active:bg-white/10">
+              <button
+                onClick={shareTrack}
+                className="flex h-12 w-12 items-center justify-center rounded-full active:bg-white/10"
+              >
                 <Share2 size={26} />
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full active:bg-white/10">
+              <button
+                onClick={addQueue}
+                className="flex h-12 w-12 items-center justify-center rounded-full active:bg-white/10"
+              >
                 <ListMusic size={29} />
               </button>
             </div>
           </div>
+
+          {sleepOpen && (
+            <div className="mt-5 rounded-3xl bg-white/10 p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-black">Sleep timer</p>
+                <button onClick={() => setSleepOpen(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                {[5, 10, 15, 30].map((mins) => (
+                  <button
+                    key={mins}
+                    onClick={() => {
+                      setSleepTimer(mins)
+                      setSleepOpen(false)
+                      setToast(`Sleep timer ${mins} min`)
+                    }}
+                    className="rounded-2xl bg-white/10 py-3 text-sm font-black"
+                  >
+                    {mins}m
+                  </button>
+                ))}
+              </div>
+              {sleepTimerMinutes && (
+                <button
+                  onClick={() => {
+                    setSleepTimer(null)
+                    setToast('Sleep timer off')
+                  }}
+                  className="mt-3 w-full rounded-2xl bg-red-500/20 py-3 text-sm font-black text-red-100"
+                >
+                  Turn off timer
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="mt-7">
             <LyricsPanel />

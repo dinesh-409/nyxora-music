@@ -22,7 +22,9 @@ interface PlayerState {
   playlistOpens: Record<string, number>
   searchHistory: string[]
   recentSearchItems: Track[]
+  likedTrackIds: string[]
   isFullPlayerOpen: boolean
+  sleepTimerMinutes: number | null
 
   setCurrentTrack: (track: Track | null, playingFromTitle?: string) => void
   setQueue: (queue: Track[], startIndex?: number, playingFromTitle?: string) => void
@@ -41,6 +43,9 @@ interface PlayerState {
   clearSearchHistory: () => void
   incrementPlayCount: (trackId: string) => void
   setFullPlayerOpen: (open: boolean) => void
+  toggleLikeCurrentTrack: () => void
+  addCurrentTrackToQueue: () => void
+  setSleepTimer: (minutes: number | null) => void
   adjustLyricsOffset: (amount: number) => void
   resetLyricsOffset: () => void
 }
@@ -67,7 +72,9 @@ export const usePlayerStore = create<PlayerState>()(
       playlistOpens: {},
       searchHistory: [],
       recentSearchItems: [],
+      likedTrackIds: [],
       isFullPlayerOpen: false,
+      sleepTimerMinutes: null,
 
       setCurrentTrack: (track, playingFromTitle = 'Nyxora Music') =>
         set({
@@ -206,6 +213,28 @@ export const usePlayerStore = create<PlayerState>()(
 
       setFullPlayerOpen: (open) => set({ isFullPlayerOpen: open }),
 
+      toggleLikeCurrentTrack: () => {
+        const track = get().currentTrack
+        if (!track?.id) return
+
+        const liked = get().likedTrackIds
+        const exists = liked.includes(track.id)
+
+        set({
+          likedTrackIds: exists
+            ? liked.filter((id) => id !== track.id)
+            : [track.id, ...liked],
+        })
+      },
+
+      addCurrentTrackToQueue: () => {
+        const track = get().currentTrack
+        if (!track) return
+        set({ queue: [...get().queue, track] })
+      },
+
+      setSleepTimer: (minutes) => set({ sleepTimerMinutes: minutes }),
+
       adjustLyricsOffset: (amount) => {
         const current = get().lyricsOffset
         const next = Math.max(-5, Math.min(5, Number((current + amount).toFixed(1))))
@@ -228,6 +257,8 @@ export const usePlayerStore = create<PlayerState>()(
         playlistOpens: state.playlistOpens,
         searchHistory: state.searchHistory,
         recentSearchItems: state.recentSearchItems,
+        likedTrackIds: state.likedTrackIds,
+        sleepTimerMinutes: state.sleepTimerMinutes,
       }),
     },
   ),
