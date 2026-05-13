@@ -305,7 +305,7 @@ export function FullPlayer() {
               onShare={shareTrack}
               onAddToQueue={addQueue}
               onSleepTimer={() => {
-                setSleepOpen(true)
+                window.dispatchEvent(new CustomEvent('nyxora-open-sleep-timer'))
                 setMenuOpen(false)
               }}
               onGoToQueue={openQueue}

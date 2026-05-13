@@ -4,6 +4,7 @@ import { BottomNav } from './BottomNav'
 import { MiniPlayer } from '../player/MiniPlayer'
 import { FullPlayer } from '../player/FullPlayer'
 import { QueuePanel } from '../player/QueuePanel'
+import { SleepTimerSheet } from '../player/SleepTimerSheet'
 import { AppToast } from '../common/AppToast'
 import { usePlayerStore } from '../../store/player-store'
 
@@ -38,6 +39,8 @@ export function MobileShell({ children, activeTab, onTabChange }: MobileShellPro
         <ErrorBoundary fallbackTitle="Queue crashed safely">
           <QueuePanel />
         </ErrorBoundary>
+
+        <SleepTimerSheet />
 
         <AppToast />
       </section>
