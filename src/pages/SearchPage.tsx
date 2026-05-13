@@ -66,15 +66,21 @@ export function SearchPage() {
       return searchHistory.slice(0, 8)
     }
 
-    return [
+    const suggestions = [
       clean,
-      `${clean} of you`,
       `${clean} song`,
-      `${clean} slowed`,
-      `${clean} tamil`,
-      `${clean} classical`,
+      `${clean} official`,
+      `${clean} lyrics`,
+      `${clean} live`,
       `${clean} remix`,
-    ].filter((item, index, arr) => item && arr.indexOf(item) === index)
+    ]
+
+    const languageSuggestions = listeningLanguages
+      .slice(0, 2)
+      .map((language) => `${clean} ${language}`)
+
+    return [...suggestions, ...languageSuggestions]
+      .filter((item, index, arr) => item && arr.indexOf(item) === index)
   }, [query, searchHistory])
 
   useEffect(() => {

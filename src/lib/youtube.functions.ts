@@ -72,6 +72,73 @@ function getBestThumbnail(thumbnails: YouTubeSearchItem['snippet']['thumbnails']
   )
 }
 
+
+function normalizeForDuplicate(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/official music video/gi, '')
+    .replace(/official video/gi, '')
+    .replace(/official song/gi, '')
+    .replace(/full video song/gi, '')
+    .replace(/full song/gi, '')
+    .replace(/lyrical video/gi, '')
+    .replace(/lyric video/gi, '')
+    .replace(/lyrics/gi, '')
+    .replace(/audio/gi, '')
+    .replace(/4k/gi, '')
+    .replace(/hd/gi, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function trackQualityScore(track: Track): number {
+  const text = `${track.title} ${track.channelName ?? ''}`.toLowerCase()
+  let score = 0
+
+  if (text.includes('official music video')) score += 40
+  if (text.includes('official video')) score += 35
+  if (text.includes('official')) score += 25
+  if (text.includes('vevo')) score += 20
+  if (text.includes('lyrics') || text.includes('lyric')) score += 8
+  if (text.includes('audio')) score += 6
+
+  if (text.includes('reaction')) score -= 100
+  if (text.includes('shorts')) score -= 100
+  if (text.includes('trailer')) score -= 100
+  if (text.includes('interview')) score -= 100
+  if (text.includes('cover')) score -= 40
+  if (text.includes('karaoke')) score -= 60
+  if (text.includes('remix')) score -= 20
+
+  return score
+}
+
+function dedupeTracks(tracks: Track[]): Track[] {
+  const map = new Map<string, Track>()
+
+  for (const track of tracks) {
+    const titleKey = normalizeForDuplicate(track.title)
+    const artistKey = normalizeForDuplicate(track.artist || track.channelName || '')
+    const key = `${artistKey}::${titleKey}`
+
+    const existing = map.get(key)
+
+    if (!existing) {
+      map.set(key, track)
+      continue
+    }
+
+    if (trackQualityScore(track) > trackQualityScore(existing)) {
+      map.set(key, track)
+    }
+  }
+
+  return [...map.values()]
+}
+
 function guessArtistFromTitle(title: string, channelTitle: string): string {
   const separators = [' - ', ' – ', '|', ':']
 
@@ -142,7 +209,8 @@ export async function searchYouTubeSongs(
       .filter((item): item is Track => item !== null) ?? []
 
   const enrichedTracks = await enrichTracksWithDurations(tracks)
-  return rankTracks(enrichedTracks, clean, detectedLanguage, preferredLanguages, followedArtists)
+  const rankedTracks = rankTracks(enrichedTracks, clean, detectedLanguage, preferredLanguages, followedArtists)
+  return dedupeTracks(rankedTracks)
 }
 
 export interface YouTubePlaylistSummary {
