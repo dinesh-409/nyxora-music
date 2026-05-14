@@ -20,6 +20,7 @@ import {
 } from '../lib/library-playlists'
 import type { Track } from '../types/music'
 import { PlaylistUniversalPlayButton } from '../components/player/PlaylistUniversalPlayButton'
+import { closeMobileKeyboard } from '../lib/mobile-keyboard'
 
 type LibraryView = 'home' | 'liked'
 
@@ -48,6 +49,7 @@ export function LibraryPage() {
   const [likedShuffleOn, setLikedShuffleOn] = useState(false)
   const [likedSearchQuery, setLikedSearchQuery] = useState('')
   const [likedSortMode, setLikedSortMode] = useState<'recent' | 'title' | 'artist'>('recent')
+  const [showLikedSortOptions, setShowLikedSortOptions] = useState(false)
   const [showLikedTools, setShowLikedTools] = useState(false)
   const [likedTouchStartY, setLikedTouchStartY] = useState<number | null>(null)
   const { setQueue, setPlaying, toggleShuffle } = usePlayerStore()
@@ -114,26 +116,23 @@ export function LibraryPage() {
     const currentY = event.touches[0]?.clientY ?? likedTouchStartY
     const dragDistance = currentY - likedTouchStartY
 
-    if (Math.abs(dragDistance) > 12) {
+    if (dragDistance > 18) {
       setShowLikedTools(true)
     }
   }
 
-  function cycleLikedSortMode() {
-    setLikedSortMode((mode) => {
-      if (mode === 'recent') return 'title'
-      if (mode === 'title') return 'artist'
-      return 'recent'
-    })
+  function applyLikedSortMode(mode: 'recent' | 'title' | 'artist') {
+    setLikedSortMode(mode)
+    setShowLikedSortOptions(false)
 
     window.dispatchEvent(
       new CustomEvent('nyxora-toast', {
         detail:
-          likedSortMode === 'recent'
-            ? 'Sorted by title'
-            : likedSortMode === 'title'
-              ? 'Sorted by artist'
-              : 'Sorted by recently added',
+          mode === 'recent'
+            ? 'Sorted by recently added'
+            : mode === 'title'
+              ? 'Sorted by title'
+              : 'Sorted by artist',
       }),
     )
   }
@@ -190,7 +189,7 @@ export function LibraryPage() {
     return (
       <div
         className="h-screen overflow-y-auto bg-gradient-to-b from-[#4d3fc7] via-[#241f42] to-[#121212] px-4 pb-40 pt-5 text-white"
-        onScroll={(event) => setShowLikedTools(event.currentTarget.scrollTop > 8)}
+        onScroll={() => {}}
         onTouchStart={handleLikedTouchStart}
         onTouchMove={handleLikedTouchMove}
       >
@@ -220,33 +219,76 @@ export function LibraryPage() {
           </button>
         </header>
 
-        <div
-          className={`fixed left-0 right-0 top-0 z-[80] px-4 pb-3 pt-16 backdrop-blur-xl transition-all duration-200 ${
-            showLikedTools
-              ? 'translate-y-0 opacity-100'
-              : 'pointer-events-none -translate-y-3 opacity-0'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <label className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/12 px-4 py-3 text-white/90">
-              <Search size={27} className="shrink-0" />
-              <input
-                value={likedSearchQuery}
-                onChange={(event) => setLikedSearchQuery(event.target.value)}
-                placeholder="Find in playlist"
-                className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-white/80"
-              />
-            </label>
+        {showLikedTools && (
+          <div className="mt-4 animate-in slide-in-from-top-3 duration-200">
+            <div className="flex items-center gap-3">
+              <form
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/12 px-4 py-3 text-white/90 backdrop-blur-xl"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  closeMobileKeyboard()
+                }}
+              >
+                <Search size={27} className="shrink-0" />
+                <input
+                  value={likedSearchQuery}
+                  onChange={(event) => setLikedSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      closeMobileKeyboard()
+                    }
+                  }}
+                  enterKeyHint="done"
+                  inputMode="search"
+                  placeholder="Find in playlist"
+                  className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-white/80"
+                />
+              </form>
 
-            <button
-              type="button"
-              onClick={cycleLikedSortMode}
-              className="rounded-lg bg-white/12 px-5 py-3 text-lg font-black text-white active:bg-white/20"
-            >
-              Sort
-            </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLikedSortOptions((value) => !value)}
+                  className="rounded-lg bg-white/12 px-5 py-3 text-lg font-black text-white backdrop-blur-xl active:bg-white/20"
+                >
+                  Sort
+                </button>
+
+                {showLikedSortOptions && (
+                  <div className="absolute right-0 top-14 z-50 w-52 overflow-hidden rounded-2xl bg-[#282828] p-2 text-white shadow-2xl">
+                    <button
+                      type="button"
+                      onClick={() => applyLikedSortMode('recent')}
+                      className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${
+                        likedSortMode === 'recent' ? 'text-emerald-400' : 'text-white'
+                      }`}
+                    >
+                      Recently added
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyLikedSortMode('title')}
+                      className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${
+                        likedSortMode === 'title' ? 'text-emerald-400' : 'text-white'
+                      }`}
+                    >
+                      Title
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyLikedSortMode('artist')}
+                      className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-bold ${
+                        likedSortMode === 'artist' ? 'text-emerald-400' : 'text-white'
+                      }`}
+                    >
+                      Artist
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         <section className="mt-5">
           <div className="mx-auto flex h-48 w-48 items-center justify-center bg-gradient-to-br from-purple-700 via-indigo-400 to-emerald-200 shadow-2xl">
