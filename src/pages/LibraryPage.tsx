@@ -49,6 +49,7 @@ export function LibraryPage() {
   const [likedSearchQuery, setLikedSearchQuery] = useState('')
   const [likedSortMode, setLikedSortMode] = useState<'recent' | 'title' | 'artist'>('recent')
   const [showLikedTools, setShowLikedTools] = useState(false)
+  const [likedTouchStartY, setLikedTouchStartY] = useState<number | null>(null)
   const { setQueue, setPlaying, toggleShuffle } = usePlayerStore()
 
   useEffect(() => {
@@ -102,6 +103,21 @@ export function LibraryPage() {
       if (likedSortMode === 'artist') return a.artist.localeCompare(b.artist)
       return 0
     })
+
+  function handleLikedTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    setLikedTouchStartY(event.touches[0]?.clientY ?? null)
+  }
+
+  function handleLikedTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    if (likedTouchStartY === null) return
+
+    const currentY = event.touches[0]?.clientY ?? likedTouchStartY
+    const dragDistance = currentY - likedTouchStartY
+
+    if (Math.abs(dragDistance) > 12) {
+      setShowLikedTools(true)
+    }
+  }
 
   function cycleLikedSortMode() {
     setLikedSortMode((mode) => {
@@ -174,7 +190,9 @@ export function LibraryPage() {
     return (
       <div
         className="h-screen overflow-y-auto bg-gradient-to-b from-[#4d3fc7] via-[#241f42] to-[#121212] px-4 pb-40 pt-5 text-white"
-        onScroll={(event) => setShowLikedTools(event.currentTarget.scrollTop > 28)}
+        onScroll={(event) => setShowLikedTools(event.currentTarget.scrollTop > 8)}
+        onTouchStart={handleLikedTouchStart}
+        onTouchMove={handleLikedTouchMove}
       >
         <header className="flex items-center justify-between">
           <button
@@ -203,7 +221,7 @@ export function LibraryPage() {
         </header>
 
         <div
-          className={`sticky top-0 z-30 -mx-4 mt-2 px-4 pb-3 pt-2 backdrop-blur-xl transition-all duration-200 ${
+          className={`fixed left-0 right-0 top-0 z-[80] px-4 pb-3 pt-16 backdrop-blur-xl transition-all duration-200 ${
             showLikedTools
               ? 'translate-y-0 opacity-100'
               : 'pointer-events-none -translate-y-3 opacity-0'
