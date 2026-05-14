@@ -315,6 +315,7 @@ if (hasOnlyQueued && !hasManualQueue) {
   }
 
   const queueHandleDragStartY = useRef<number | null>(null)
+  const backdropDragStartY = useRef<number | null>(null)
 
   function handleQueueHandleStart(clientY: number) {
     queueHandleDragStartY.current = clientY
@@ -327,18 +328,44 @@ if (hasOnlyQueued && !hasManualQueue) {
     if (startY === null) return
 
     const diff = clientY - startY
+    const threshold = 28
 
-    if (diff < -20) {
-      setExpanded(true)
+    // Drag up: half -> full
+    if (diff < -threshold) {
+      if (!isQueueExpanded) setExpanded(true)
       return
     }
 
-    if (diff > 20) {
-      setExpanded(false)
+    // Drag down:
+    // full -> half
+    // half -> close
+    if (diff > threshold) {
+      if (isQueueExpanded) {
+        setExpanded(false)
+      } else {
+        closeQueue()
+      }
       return
     }
 
+    // Small tap: toggle half/full
     setExpanded(!isQueueExpanded)
+  }
+
+  function handleBackdropDragStart(clientY: number) {
+    backdropDragStartY.current = clientY
+  }
+
+  function handleBackdropDragEnd(clientY: number) {
+    const startY = backdropDragStartY.current
+    backdropDragStartY.current = null
+
+    if (startY === null) return
+
+    const diff = clientY - startY
+
+    // Blur area drag down closes queue
+    if (diff > 24) closeQueue()
   }
 
   function clearQueue() {
@@ -403,10 +430,14 @@ if (hasOnlyQueued && !hasManualQueue) {
   return (
     <div className="fixed inset-0 z-[90] bg-black/45 text-white backdrop-blur-sm">
       <button
-        className="absolute inset-0"
-        onClick={closeQueue}
-        aria-label="Close queue"
-      />
+          className="absolute inset-0 touch-none"
+          onClick={closeQueue}
+          onPointerDown={(event) => handleBackdropDragStart(event.clientY)}
+          onPointerUp={(event) => handleBackdropDragEnd(event.clientY)}
+          onTouchStart={(event) => handleBackdropDragStart(event.touches[0]?.clientY ?? 0)}
+          onTouchEnd={(event) => handleBackdropDragEnd(event.changedTouches[0]?.clientY ?? 0)}
+          aria-label="Close queue"
+        />
 
       <div
         onClick={(event) => event.stopPropagation()}
