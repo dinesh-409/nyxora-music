@@ -15,6 +15,7 @@ import { usePlayerStore } from '../store/player-store'
 import { TrackLikeButton } from '../components/player/TrackLikeButton'
 import { readRecentTracks, removeRecentTrack, saveRecentTrack } from '../lib/recent-tracks'
 import { PlaylistSaveButton } from '../components/common/PlaylistSaveButton'
+import { getLocalPlaylistFallback } from '../lib/local-playlists'
 
 type SearchTab = 'songs' | 'playlists'
 type SearchMode = 'home' | 'focused'
@@ -158,7 +159,7 @@ setQueue,
 
     if (clean.length < 2) {
       setSongs([])
-      setPlaylists([])
+      setPlaylists(getLocalPlaylistFallback(query.trim()))
       setError(null)
       return
     }
@@ -312,7 +313,7 @@ setQueue,
                   onClick={() => {
                     setQuery('')
                     setSongs([])
-                    setPlaylists([])
+                    setPlaylists(getLocalPlaylistFallback(query.trim()))
                   }}
                 >
                   <X size={22} />
