@@ -403,7 +403,7 @@ setQueue,
               ))}
             </section>
 
-            <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1">
+            <div className="hidden">
               <button
                 onClick={() => setActiveTab('songs')}
                 className={`rounded-xl py-2 text-sm font-bold ${
