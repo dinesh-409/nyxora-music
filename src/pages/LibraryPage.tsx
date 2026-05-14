@@ -46,6 +46,9 @@ export function LibraryPage() {
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>(() => getSavedPlaylists())
   const [activeFilter, setActiveFilter] = useState<'playlists' | 'artists' | 'downloaded'>('playlists')
   const [likedShuffleOn, setLikedShuffleOn] = useState(false)
+  const [likedSearchQuery, setLikedSearchQuery] = useState('')
+  const [likedSortMode, setLikedSortMode] = useState<'recent' | 'title' | 'artist'>('recent')
+  const [showLikedTools, setShowLikedTools] = useState(false)
   const { setQueue, setPlaying, toggleShuffle } = usePlayerStore()
 
   useEffect(() => {
@@ -83,6 +86,41 @@ export function LibraryPage() {
       playlist,
     })),
   ]
+
+  const filteredLikedSongs = likedSongs
+    .filter((track) => {
+      const query = likedSearchQuery.trim().toLowerCase()
+      if (!query) return true
+
+      return (
+        track.title.toLowerCase().includes(query) ||
+        track.artist.toLowerCase().includes(query)
+      )
+    })
+    .sort((a, b) => {
+      if (likedSortMode === 'title') return a.title.localeCompare(b.title)
+      if (likedSortMode === 'artist') return a.artist.localeCompare(b.artist)
+      return 0
+    })
+
+  function cycleLikedSortMode() {
+    setLikedSortMode((mode) => {
+      if (mode === 'recent') return 'title'
+      if (mode === 'title') return 'artist'
+      return 'recent'
+    })
+
+    window.dispatchEvent(
+      new CustomEvent('nyxora-toast', {
+        detail:
+          likedSortMode === 'recent'
+            ? 'Sorted by title'
+            : likedSortMode === 'title'
+              ? 'Sorted by artist'
+              : 'Sorted by recently added',
+      }),
+    )
+  }
 
   function playLikedSongs(startIndex = 0) {
     if (!likedSongs.length) {
@@ -134,7 +172,10 @@ export function LibraryPage() {
 
   if (view === 'liked') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#4d3fc7] via-[#241f42] to-[#121212] px-4 pb-40 pt-5 text-white">
+      <div
+        className="h-screen overflow-y-auto bg-gradient-to-b from-[#4d3fc7] via-[#241f42] to-[#121212] px-4 pb-40 pt-5 text-white"
+        onScroll={(event) => setShowLikedTools(event.currentTarget.scrollTop > 28)}
+      >
         <header className="flex items-center justify-between">
           <button
             type="button"
@@ -160,6 +201,34 @@ export function LibraryPage() {
             <MoreVertical size={28} />
           </button>
         </header>
+
+        <div
+          className={`sticky top-0 z-30 -mx-4 mt-2 px-4 pb-3 pt-2 backdrop-blur-xl transition-all duration-200 ${
+            showLikedTools
+              ? 'translate-y-0 opacity-100'
+              : 'pointer-events-none -translate-y-3 opacity-0'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <label className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/12 px-4 py-3 text-white/90">
+              <Search size={27} className="shrink-0" />
+              <input
+                value={likedSearchQuery}
+                onChange={(event) => setLikedSearchQuery(event.target.value)}
+                placeholder="Find in playlist"
+                className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-white/80"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={cycleLikedSortMode}
+              className="rounded-lg bg-white/12 px-5 py-3 text-lg font-black text-white active:bg-white/20"
+            >
+              Sort
+            </button>
+          </div>
+        </div>
 
         <section className="mt-5">
           <div className="mx-auto flex h-48 w-48 items-center justify-center bg-gradient-to-br from-purple-700 via-indigo-400 to-emerald-200 shadow-2xl">
@@ -213,16 +282,16 @@ export function LibraryPage() {
         </section>
 
         <section className="mt-8 space-y-5">
-          {likedSongs.length === 0 ? (
+          {filteredLikedSongs.length === 0 ? (
             <div className="rounded-3xl bg-white/8 p-5 text-white/70">
               Like songs from Search, Mini Player, Full Player, or three dots menu. They will appear here.
             </div>
           ) : (
-            likedSongs.map((track, index) => (
+            filteredLikedSongs.map((track, index) => (
               <div key={`${track.id}-${track.videoId}-${index}`} className="flex items-center gap-4">
                 <button
                   type="button"
-                  onClick={() => playLikedSongs(index)}
+                  onClick={() => playLikedSongs(likedSongs.findIndex((item) => (item.videoId || item.id) === (track.videoId || track.id)))}
                   className="flex min-w-0 flex-1 items-center gap-4 text-left active:scale-[0.99]"
                 >
                   <SafeImage
