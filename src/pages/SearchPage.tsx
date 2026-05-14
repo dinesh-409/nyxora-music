@@ -14,6 +14,7 @@ import { SongOptionsMenu } from '../components/player/SongOptionsMenu'
 import { usePlayerStore } from '../store/player-store'
 import { TrackLikeButton } from '../components/player/TrackLikeButton'
 import { readRecentTracks, removeRecentTrack, saveRecentTrack } from '../lib/recent-tracks'
+import { PlaylistSaveButton } from '../components/common/PlaylistSaveButton'
 
 type SearchTab = 'songs' | 'playlists'
 type SearchMode = 'home' | 'focused'
@@ -575,6 +576,8 @@ setQueue,
                             <p className="mt-1 text-sm text-emerald-400">Opening...</p>
                           )}
                         </div>
+
+                    <PlaylistSaveButton playlist={playlist} size={26} />
                       </button>
                     ))}
                   </div>
