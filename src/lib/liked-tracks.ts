@@ -64,3 +64,18 @@ export function toggleTrackLiked(track?: Track | null) {
     addTrackToLikedSongs(track)
   }
 }
+
+
+export function getLikedTracks(): Track[] {
+  try {
+    const raw = localStorage.getItem('nyxora-liked-tracks')
+    if (!raw) return []
+
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+
+    return parsed.filter((track) => track?.id && track?.title)
+  } catch {
+    return []
+  }
+}
