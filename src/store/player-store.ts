@@ -18,6 +18,8 @@ const makeQueueItem = (track: Track): QueuedTrack & { sourceType?: 'queued' | 'r
 
 interface PlayerState {
   currentTrack: Track | null
+  activeContextId: string | null
+  activeContextTitle: string | null
   playingFromTitle: string
   queue: Track[]
   queuedTracks: QueuedTrack[]
@@ -96,6 +98,8 @@ export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
       currentTrack: null,
+    activeContextId: null,
+    activeContextTitle: null,
       playingFromTitle: 'Nyxora Music',
       queue: [],
       queuedTracks: [],

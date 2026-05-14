@@ -5,7 +5,6 @@ import {
   Grid2X2,
   Heart,
   MoreVertical,
-  Play,
   Plus,
   Shuffle,
   Search,
@@ -20,6 +19,7 @@ import {
   type SavedPlaylist,
 } from '../lib/library-playlists'
 import type { Track } from '../types/music'
+import { PlaylistUniversalPlayButton } from '../components/player/PlaylistUniversalPlayButton'
 
 type LibraryView = 'home' | 'liked'
 
@@ -94,7 +94,7 @@ export function LibraryPage() {
       return
     }
 
-    setQueue(likedSongs, startIndex, 'Liked Songs')
+    setQueue(likedSongs, startIndex, 'liked-songs')
     setPlaying(true)
   }
 
@@ -204,14 +204,11 @@ export function LibraryPage() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => playLikedSongs(0)}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400 text-black shadow-xl active:scale-95"
-              aria-label="Play liked songs"
-            >
-              <Play size={31} fill="black" />
-            </button>
+            <PlaylistUniversalPlayButton
+              playlistId="liked-songs"
+              playlistTitle="Liked Songs"
+              tracks={likedSongs}
+            />
           </div>
         </section>
 
