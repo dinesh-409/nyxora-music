@@ -9,13 +9,21 @@ type Props = {
   size?: 'normal' | 'large'
 }
 
-function sameTrack(a?: Track | null, b?: Track | null) {
-  if (!a || !b) return false
+function getTrackKey(track?: Track | null) {
+  if (!track) return ''
   return (
-    (a.videoId && b.videoId && a.videoId === b.videoId) ||
-    (a.id && b.id && a.id === b.id) ||
-    `${a.title}-${a.artist}` === `${b.title}-${b.artist}`
+    track.videoId ||
+    track.id ||
+    `${track.title || ''}-${track.artist || ''}`.toLowerCase().trim()
   )
+}
+
+function isSameTrack(a?: Track | null, b?: Track | null) {
+  const aKey = getTrackKey(a)
+  const bKey = getTrackKey(b)
+
+  if (!aKey || !bKey) return false
+  return aKey === bKey
 }
 
 export function PlaylistUniversalPlayButton({
@@ -29,19 +37,11 @@ export function PlaylistUniversalPlayButton({
     isPlaying,
     setPlaying,
     setQueue,
-    activeContextId,
-    activeContextTitle,
   } = usePlayerStore()
 
-  const currentSongInsideThisPlaylist = tracks.some((track) => sameTrack(track, currentTrack))
-
-  const isThisPlaylistActive =
-    currentSongInsideThisPlaylist &&
-    (activeContextId === playlistId ||
-      activeContextTitle === playlistTitle ||
-      activeContextId === playlistTitle)
-
-  const showPause = isThisPlaylistActive && isPlaying
+  const currentTrackIndex = tracks.findIndex((track) => isSameTrack(track, currentTrack))
+  const isCurrentPlaylistSong = currentTrackIndex !== -1
+  const showPause = isCurrentPlaylistSong && isPlaying
 
   function handleClick() {
     if (!tracks.length) {
@@ -53,7 +53,7 @@ export function PlaylistUniversalPlayButton({
       return
     }
 
-    if (isThisPlaylistActive) {
+    if (isCurrentPlaylistSong) {
       setPlaying(!isPlaying)
       return
     }
@@ -67,14 +67,14 @@ export function PlaylistUniversalPlayButton({
       type="button"
       onClick={handleClick}
       className={`flex items-center justify-center rounded-full bg-emerald-400 text-black shadow-xl active:scale-95 ${
-        size === 'large' ? 'h-20 w-20' : 'h-14 w-14'
+        size === 'large' ? 'h-16 w-16' : 'h-14 w-14'
       }`}
       aria-label={showPause ? 'Pause playlist' : 'Play playlist'}
     >
       {showPause ? (
-        <Pause size={size === 'large' ? 38 : 26} fill="black" />
+        <Pause size={size === 'large' ? 31 : 25} fill="black" />
       ) : (
-        <Play size={size === 'large' ? 38 : 26} fill="black" className="ml-1" />
+        <Play size={size === 'large' ? 31 : 25} fill="black" className="ml-1" />
       )}
     </button>
   )
