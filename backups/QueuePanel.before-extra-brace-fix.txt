@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type CSSProperties, type TouchEvent } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -82,7 +82,6 @@ function SortableQueueRow({
   }
 
   const isRecommended = item.sourceType === 'recommended' || item.queueItemId.startsWith('recommended-')
-
   return (
     <div
       ref={setNodeRef}
@@ -146,12 +145,12 @@ function SortableQueueRow({
 }
 
 export function QueuePanel() {
-  const touchStartY = useRef<number | null>(null)
-  const state = usePlayerStore() as any
+const state = usePlayerStore() as any
 
   const currentTrack = state.currentTrack as Track | null
   const isPlaying = Boolean(state.isPlaying)
   const isQueueOpen = Boolean(state.isQueueOpen)
+// nyxora-force-close-queue-on-mount
   const isQueueExpanded = Boolean(state.isQueueExpanded)
   const isQueueEditMode = Boolean(state.isQueueEditMode)
   const playingFromTitle = state.playingFromTitle as string | null | undefined
@@ -222,8 +221,7 @@ export function QueuePanel() {
       savedDisplayItems.every((item) => item.sourceType === 'queued')
 
     const hasManualQueue = queuedTracks.length > 0
-
-    if (hasOnlyQueued && !hasManualQueue) {
+if (hasOnlyQueued && !hasManualQueue) {
       usePlayerStore.setState({ queueDisplayItems: [] })
     }
   }, [])
@@ -279,9 +277,6 @@ export function QueuePanel() {
       currentIndex: 0,
     })
   }, [currentTrack?.id, currentTrack?.videoId, currentTrack?.title])
-
-  if (!isQueueOpen) return null
-
   function syncDisplayItemsToQueue(items: QueueDisplayItem[]) {
     const normalizedDisplayItems = items.map((item) => ({
       ...cleanTrack(item),
@@ -309,8 +304,7 @@ export function QueuePanel() {
   }
 
   function closeQueue() {
-    usePlayerStore.setState({ isQueueOpen: false })
-  }
+}
 
   function setExpanded(value: boolean) {
     usePlayerStore.setState({ isQueueExpanded: value })
@@ -320,9 +314,63 @@ export function QueuePanel() {
     usePlayerStore.setState({ isQueueEditMode: !isQueueEditMode })
   }
 
+  const queueHandleDragStartY = useRef<number | null>(null)
+
+  function handleQueueHandleStart(clientY: number) {
+    queueHandleDragStartY.current = clientY
+  }
+
+  function handleQueueHandleEnd(clientY: number) {
+    const startY = queueHandleDragStartY.current
+    queueHandleDragStartY.current = null
+
+    if (startY === null) return
+
+    const diff = clientY - startY
+
+    // Drag up -> full
+    if (diff < -24) {
+      setExpanded(true)
+      return
+    }
+
+    // Drag down:
+    // full -> half
+    // half -> close
+    if (diff > 24) {
+      if (isQueueExpanded) {
+        setExpanded(false)
+      } else {
+        closeQueuePanel()
+      }
+      return
+    }
+
+    // Tap handle -> toggle half/full
+    setExpanded(!isQueueExpanded)
+  }
+
+    if (diff > 20) {
+      setExpanded(false)
+      return
+    }
+
+    setExpanded(!isQueueExpanded)
+  }
+
+  function closeQueuePanel() {
+    usePlayerStore.setState({
+      isQueueOpen: false,
+      isQueueExpanded: false,
+      isQueueEditMode: false,
+    })
+  }
+
   function clearQueue() {
-    usePlayerStore.setState({ queuedTracks: [], queueDisplayItems: [], recommendedTracks: [] })
+    if (queuedTracks.length === 0) return
+
     toast('Queue cleared')
+    syncDisplayItemsToQueue(displayItems.filter((item) => item.sourceType !== 'queued'))
   }
 
   function removeDisplayItem(index: number) {
@@ -374,20 +422,8 @@ export function QueuePanel() {
     syncDisplayItemsToQueue(reordered)
     toast('Queue order updated')
   }
+  if (!isQueueOpen) return null
 
-  function onHandleTouchStart(event: TouchEvent<HTMLDivElement>) {
-    touchStartY.current = event.touches[0].clientY
-  }
-
-  function onHandleTouchEnd(event: TouchEvent<HTMLDivElement>) {
-    if (touchStartY.current == null) return
-
-    const diff = touchStartY.current - event.changedTouches[0].clientY
-    if (diff > 30) setExpanded(true)
-    if (diff < -30) setExpanded(false)
-
-    touchStartY.current = null
-  }
 
   return (
     <div className="fixed inset-0 z-[90] bg-black/45 text-white backdrop-blur-sm">
@@ -400,37 +436,41 @@ export function QueuePanel() {
       <div
         onClick={(event) => event.stopPropagation()}
         className={`absolute inset-x-0 bottom-0 mx-auto flex max-w-md flex-col rounded-t-[28px] bg-[#1f1f1f] shadow-2xl transition-all duration-300 ${
-          isQueueExpanded ? 'h-[94vh]' : 'h-[72vh]'
+          isQueueExpanded ? 'h-[calc(100vh-32px)] max-h-[calc(100vh-32px)]' : 'h-[72vh]'
         }`}
       >
         <div className="flex justify-center pb-2 pt-3">
-          <div
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
+            aria-label="Resize queue"
             onClick={() => setExpanded(!isQueueExpanded)}
-            onTouchStart={onHandleTouchStart}
-            onTouchEnd={onHandleTouchEnd}
-            className="h-1.5 w-16 rounded-full bg-white/40"
-          />
+            onPointerDown={(event) => handleQueueHandleStart(event.clientY)}
+            onPointerUp={(event) => handleQueueHandleEnd(event.clientY)}
+            onTouchStart={(event) => handleQueueHandleStart(event.touches[0]?.clientY ?? 0)}
+            onTouchEnd={(event) => handleQueueHandleEnd(event.changedTouches[0]?.clientY ?? 0)}
+            className="h-8 w-24 touch-none rounded-full p-3"
+          >
+            <span className="mx-auto block h-1.5 w-16 rounded-full bg-white/40" />
+          </button>
         </div>
-
         <header className="flex items-start justify-between px-5 pt-2">
           <div className="min-w-0 flex-1">
             <h2 className="text-[30px] font-black leading-none">Queue</h2>
+              {queuedTracks.length > 0 && !isQueueEditMode && (
+                <button
+                  type="button"
+                  onClick={clearQueue}
+                  className="ml-3 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white active:bg-white/15"
+                >
+                  Clear
+                </button>
+              )} {/* nyxora-clear-visible-only-manual */}
             <p className="mt-2 truncate text-[17px] text-white/65">
               {formatPlayingText(playingFromTitle, currentTrack)}
             </p>
           </div>
 
           <div className="ml-3 flex items-center gap-2">
-            {displayItems.length > 0 && (
-              <button
-                onClick={clearQueue}
-                className="rounded-full bg-white/10 px-5 py-3 text-[16px] font-bold active:bg-white/20"
-              >
-                Clear
-              </button>
-            )}
 
             <button
               onClick={toggleEdit}

@@ -449,31 +449,18 @@ export const usePlayerStore = create<PlayerState>()(
     }),
     {
       name: 'nyxora-player-store',
-      partialize: (state) => ({
-        currentTrack: state.currentTrack,
-        playingFromTitle: state.playingFromTitle,
-        queue: state.queue,
-        currentIndex: state.currentIndex,
-        repeatMode: state.repeatMode,
-        shuffleMode: state.shuffleMode,
-        autoplay: state.autoplay,
-        playCounts: state.playCounts,
-        playlistOpens: state.playlistOpens,
-        searchHistory: state.searchHistory,
-        recentSearchItems: state.recentSearchItems,
-        likedTrackIds: state.likedTrackIds,
-        sleepTimerMinutes: state.sleepTimerMinutes,
-        isQueueOpen: state.isQueueOpen,
-        isQueueExpanded: state.isQueueExpanded,
-        isQueueEditMode: state.isQueueEditMode,
-        queuedTracks: state.queuedTracks,
-        recommendedTracks: state.recommendedTracks,
-        queueDisplayItems: state.queueDisplayItems,
-        sleepTimerMode: state.sleepTimerMode,
-        sleepTimerEndsAt: state.sleepTimerEndsAt,
-        playerLoadKey: state.playerLoadKey,
-        savedLyricsOffsets: state.savedLyricsOffsets,
-      }),
+      partialize: (state) => {
+      const persisted = {
+        ...state,
+        isQueueOpen: false,
+        isQueueExpanded: false,
+        isQueueEditMode: false,
+      }
+      delete (persisted as Partial<PlayerState>).isQueueOpen
+      delete (persisted as Partial<PlayerState>).isQueueExpanded
+      delete (persisted as Partial<PlayerState>).isQueueEditMode
+      return persisted
+    }, // nyxora-strip-queue-ui-state
     },
   ),
 )
