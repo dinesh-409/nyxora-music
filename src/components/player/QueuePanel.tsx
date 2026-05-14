@@ -151,13 +151,7 @@ const state = usePlayerStore() as any
   const currentTrack = state.currentTrack as Track | null
   const isPlaying = Boolean(state.isPlaying)
   const isQueueOpen = Boolean(state.isQueueOpen)
-
-  useEffect(() => {
-    usePlayerStore.setState({
-      isQueueOpen: false,
-      isQueueExpanded: false,
-    })
-  }, []) // nyxora-force-close-queue-on-mount
+// nyxora-force-close-queue-on-mount
   const isQueueExpanded = Boolean(state.isQueueExpanded)
   const isQueueEditMode = Boolean(state.isQueueEditMode)
   const playingFromTitle = state.playingFromTitle as string | null | undefined
@@ -315,8 +309,7 @@ const state = usePlayerStore() as any
   }
 
   function closeQueue() {
-    usePlayerStore.setState({ isQueueOpen: false })
-  }
+}
 
   function setExpanded(value: boolean) {
     usePlayerStore.setState({ isQueueExpanded: value })
