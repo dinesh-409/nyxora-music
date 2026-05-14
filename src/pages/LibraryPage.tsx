@@ -45,7 +45,8 @@ export function LibraryPage() {
   const [likedSongs, setLikedSongs] = useState<Track[]>(() => getLikedTracks())
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>(() => getSavedPlaylists())
   const [activeFilter, setActiveFilter] = useState<'playlists' | 'artists' | 'downloaded'>('playlists')
-  const { setQueue, setPlaying, isShuffle, toggleShuffle } = usePlayerStore()
+  const [likedShuffleOn, setLikedShuffleOn] = useState(false)
+  const { setQueue, setPlaying, toggleShuffle } = usePlayerStore()
 
   useEffect(() => {
     const syncLibrary = () => {
@@ -190,11 +191,14 @@ export function LibraryPage() {
 
               <button
                 type="button"
-                onClick={toggleShuffle}
+                onClick={() => {
+                  toggleShuffle()
+                  setLikedShuffleOn((value) => !value)
+                }}
                 className={`rounded-full p-2 active:bg-white/10 ${
-                  isShuffle ? 'text-emerald-400' : 'text-white/70'
+                  likedShuffleOn ? 'text-emerald-400' : 'text-white/70'
                 }`}
-                aria-label={isShuffle ? 'Shuffle on' : 'Shuffle off'}
+                aria-label={likedShuffleOn ? 'Shuffle on' : 'Shuffle off'}
               >
                 <Shuffle size={29} />
               </button>
