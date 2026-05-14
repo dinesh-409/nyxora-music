@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type CSSProperties, type TouchEvent } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -146,12 +146,18 @@ function SortableQueueRow({
 }
 
 export function QueuePanel() {
-  const touchStartY = useRef<number | null>(null)
-  const state = usePlayerStore() as any
+const state = usePlayerStore() as any
 
   const currentTrack = state.currentTrack as Track | null
   const isPlaying = Boolean(state.isPlaying)
   const isQueueOpen = Boolean(state.isQueueOpen)
+
+  useEffect(() => {
+    usePlayerStore.setState({
+      isQueueOpen: false,
+      isQueueExpanded: false,
+    })
+  }, []) // nyxora-force-close-queue-on-mount
   const isQueueExpanded = Boolean(state.isQueueExpanded)
   const isQueueEditMode = Boolean(state.isQueueEditMode)
   const playingFromTitle = state.playingFromTitle as string | null | undefined
@@ -320,9 +326,36 @@ export function QueuePanel() {
     usePlayerStore.setState({ isQueueEditMode: !isQueueEditMode })
   }
 
+  const queueHandleDragStartY = useRef<number | null>(null)
+
+  function handleQueueHandleStart(clientY: number) {
+    queueHandleDragStartY.current = clientY
+  }
+
+  function handleQueueHandleEnd(clientY: number) {
+    const startY = queueHandleDragStartY.current
+    queueHandleDragStartY.current = null
+
+    if (startY === null) return
+
+    const diff = clientY - startY
+
+    if (diff < -20) {
+      setExpanded(true)
+      return
+    }
+
+    if (diff > 20) {
+      setExpanded(false)
+      return
+    }
+
+    setExpanded(!isQueueExpanded)
+  }
+
   function clearQueue() {
-    usePlayerStore.setState({ queuedTracks: [], queueDisplayItems: [], recommendedTracks: [] })
     toast('Queue cleared')
+    syncDisplayItemsToQueue([])
   }
 
   function removeDisplayItem(index: number) {
@@ -375,20 +408,6 @@ export function QueuePanel() {
     toast('Queue order updated')
   }
 
-  function onHandleTouchStart(event: TouchEvent<HTMLDivElement>) {
-    touchStartY.current = event.touches[0].clientY
-  }
-
-  function onHandleTouchEnd(event: TouchEvent<HTMLDivElement>) {
-    if (touchStartY.current == null) return
-
-    const diff = touchStartY.current - event.changedTouches[0].clientY
-    if (diff > 30) setExpanded(true)
-    if (diff < -30) setExpanded(false)
-
-    touchStartY.current = null
-  }
-
   return (
     <div className="fixed inset-0 z-[90] bg-black/45 text-white backdrop-blur-sm">
       <button
@@ -400,20 +419,23 @@ export function QueuePanel() {
       <div
         onClick={(event) => event.stopPropagation()}
         className={`absolute inset-x-0 bottom-0 mx-auto flex max-w-md flex-col rounded-t-[28px] bg-[#1f1f1f] shadow-2xl transition-all duration-300 ${
-          isQueueExpanded ? 'h-[94vh]' : 'h-[72vh]'
+          isQueueExpanded ? 'h-[calc(100vh-32px)] max-h-[calc(100vh-32px)]' : 'h-[72vh]'
         }`}
       >
         <div className="flex justify-center pb-2 pt-3">
-          <div
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
+            aria-label="Resize queue"
             onClick={() => setExpanded(!isQueueExpanded)}
-            onTouchStart={onHandleTouchStart}
-            onTouchEnd={onHandleTouchEnd}
-            className="h-1.5 w-16 rounded-full bg-white/40"
-          />
+            onPointerDown={(event) => handleQueueHandleStart(event.clientY)}
+            onPointerUp={(event) => handleQueueHandleEnd(event.clientY)}
+            onTouchStart={(event) => handleQueueHandleStart(event.touches[0]?.clientY ?? 0)}
+            onTouchEnd={(event) => handleQueueHandleEnd(event.changedTouches[0]?.clientY ?? 0)}
+            className="h-8 w-24 touch-none rounded-full p-3"
+          >
+            <span className="mx-auto block h-1.5 w-16 rounded-full bg-white/40" />
+          </button>
         </div>
-
         <header className="flex items-start justify-between px-5 pt-2">
           <div className="min-w-0 flex-1">
             <h2 className="text-[30px] font-black leading-none">Queue</h2>
