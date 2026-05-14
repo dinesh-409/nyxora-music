@@ -7,6 +7,7 @@ import {
   MoreVertical,
   Play,
   Plus,
+  Shuffle,
   Search,
   Trash2,
 } from 'lucide-react'
@@ -44,7 +45,7 @@ export function LibraryPage() {
   const [likedSongs, setLikedSongs] = useState<Track[]>(() => getLikedTracks())
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>(() => getSavedPlaylists())
   const [activeFilter, setActiveFilter] = useState<'playlists' | 'artists' | 'downloaded'>('playlists')
-  const { setQueue, setPlaying } = usePlayerStore()
+  const { setQueue, setPlaying, isShuffle, toggleShuffle } = usePlayerStore()
 
   useEffect(() => {
     const syncLibrary = () => {
@@ -171,20 +172,33 @@ export function LibraryPage() {
           </p>
 
           <div className="mt-7 flex items-center justify-between">
-            <button
-              type="button"
-              className="rounded-full p-2 text-white/70 active:bg-white/10"
-              aria-label="Liked songs menu"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent('nyxora-toast', {
-                    detail: 'Liked Songs menu coming next',
-                  }),
-                )
-              }
-            >
-              <MoreVertical size={30} />
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                className="rounded-full p-2 text-white/70 active:bg-white/10"
+                aria-label="Liked songs menu"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent('nyxora-toast', {
+                      detail: 'Liked Songs menu coming next',
+                    }),
+                  )
+                }
+              >
+                <MoreVertical size={30} />
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleShuffle}
+                className={`rounded-full p-2 active:bg-white/10 ${
+                  isShuffle ? 'text-emerald-400' : 'text-white/70'
+                }`}
+                aria-label={isShuffle ? 'Shuffle on' : 'Shuffle off'}
+              >
+                <Shuffle size={29} />
+              </button>
+            </div>
 
             <button
               type="button"

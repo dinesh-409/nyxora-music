@@ -1,68 +1,45 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Track } from '../types/music'
+import {
+  getTrackLikeKey,
+  isTrackLiked,
+  toggleTrackLiked,
+} from '../lib/liked-tracks'
 
-const STORAGE_KEY = 'nyxora-liked-tracks'
+export function useLikedTrack(track: Track | null | undefined) {
+  const trackKey = useMemo(() => {
+    return track ? getTrackLikeKey(track) : ''
+  }, [track])
 
-function getTrackLikeKey(track?: Track | null) {
-  if (!track) return ''
-  return `${track.id || ''}-${track.videoId || ''}-${track.title || ''}-${track.artist || ''}`.toLowerCase()
-}
+  const [liked, setLiked] = useState(() => (track ? isTrackLiked(track) : false))
 
-function readLikedKeys() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed.filter(Boolean) : []
-  } catch {
-    return []
-  }
-}
-
-function writeLikedKeys(keys: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(new Set(keys))))
-}
-
-export function useLikedTrack(track?: Track | null) {
-  const likeKey = useMemo(() => getTrackLikeKey(track), [track])
-  const [likedKeys, setLikedKeys] = useState<string[]>(() => readLikedKeys())
+  const syncLiked = useCallback(() => {
+    setLiked(track ? isTrackLiked(track) : false)
+  }, [track, trackKey])
 
   useEffect(() => {
-    function syncLikedState() {
-      setLikedKeys(readLikedKeys())
-    }
+    syncLiked()
 
-    window.addEventListener('nyxora-liked-changed', syncLikedState)
-    window.addEventListener('storage', syncLikedState)
+    window.addEventListener('nyxora-liked-changed', syncLiked)
+    window.addEventListener('storage', syncLiked)
 
     return () => {
-      window.removeEventListener('nyxora-liked-changed', syncLikedState)
-      window.removeEventListener('storage', syncLikedState)
+      window.removeEventListener('nyxora-liked-changed', syncLiked)
+      window.removeEventListener('storage', syncLiked)
     }
-  }, [])
+  }, [syncLiked])
 
-  const liked = Boolean(likeKey && likedKeys.includes(likeKey))
+  const toggleLiked = useCallback(() => {
+    if (!track) return false
 
-  function toggleLiked() {
-    if (!track || !likeKey) return
+    const next = toggleTrackLiked(track, true)
+    setLiked(next)
 
-    const currentKeys = readLikedKeys()
-    const alreadyLiked = currentKeys.includes(likeKey)
+    return next
+  }, [track, trackKey])
 
-    const nextKeys = alreadyLiked
-      ? currentKeys.filter((key) => key !== likeKey)
-      : [...currentKeys, likeKey]
-
-    writeLikedKeys(nextKeys)
-    setLikedKeys(nextKeys)
-
-    window.dispatchEvent(new CustomEvent('nyxora-liked-changed'))
-
-    window.dispatchEvent(
-      new CustomEvent('nyxora-toast', {
-        detail: alreadyLiked ? 'Removed from liked songs' : 'Added to liked songs',
-      }),
-    )
+  return {
+    liked,
+    toggleLiked,
   }
-
-  return { liked, toggleLiked }
 }
