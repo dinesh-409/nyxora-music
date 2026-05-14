@@ -82,7 +82,6 @@ function SortableQueueRow({
   }
 
   const isRecommended = item.sourceType === 'recommended' || item.queueItemId.startsWith('recommended-')
-
   return (
     <div
       ref={setNodeRef}
@@ -222,8 +221,7 @@ const state = usePlayerStore() as any
       savedDisplayItems.every((item) => item.sourceType === 'queued')
 
     const hasManualQueue = queuedTracks.length > 0
-
-    if (hasOnlyQueued && !hasManualQueue) {
+if (hasOnlyQueued && !hasManualQueue) {
       usePlayerStore.setState({ queueDisplayItems: [] })
     }
   }, [])
@@ -279,9 +277,6 @@ const state = usePlayerStore() as any
       currentIndex: 0,
     })
   }, [currentTrack?.id, currentTrack?.videoId, currentTrack?.title])
-
-  if (!isQueueOpen) return null
-
   function syncDisplayItemsToQueue(items: QueueDisplayItem[]) {
     const normalizedDisplayItems = items.map((item) => ({
       ...cleanTrack(item),
@@ -347,8 +342,10 @@ const state = usePlayerStore() as any
   }
 
   function clearQueue() {
+    if (queuedTracks.length === 0) return
+
     toast('Queue cleared')
-    syncDisplayItemsToQueue([])
+    syncDisplayItemsToQueue(displayItems.filter((item) => item.sourceType !== 'queued'))
   }
 
   function removeDisplayItem(index: number) {
@@ -400,6 +397,8 @@ const state = usePlayerStore() as any
     syncDisplayItemsToQueue(reordered)
     toast('Queue order updated')
   }
+  if (!isQueueOpen) return null
+
 
   return (
     <div className="fixed inset-0 z-[90] bg-black/45 text-white backdrop-blur-sm">
@@ -432,20 +431,21 @@ const state = usePlayerStore() as any
         <header className="flex items-start justify-between px-5 pt-2">
           <div className="min-w-0 flex-1">
             <h2 className="text-[30px] font-black leading-none">Queue</h2>
+              {queuedTracks.length > 0 && !isQueueEditMode && (
+                <button
+                  type="button"
+                  onClick={clearQueue}
+                  className="ml-3 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white active:bg-white/15"
+                >
+                  Clear
+                </button>
+              )} {/* nyxora-clear-visible-only-manual */}
             <p className="mt-2 truncate text-[17px] text-white/65">
               {formatPlayingText(playingFromTitle, currentTrack)}
             </p>
           </div>
 
           <div className="ml-3 flex items-center gap-2">
-            {displayItems.length > 0 && (
-              <button
-                onClick={clearQueue}
-                className="rounded-full bg-white/10 px-5 py-3 text-[16px] font-bold active:bg-white/20"
-              >
-                Clear
-              </button>
-            )}
 
             <button
               onClick={toggleEdit}
