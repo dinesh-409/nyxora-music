@@ -1,9 +1,10 @@
-import { CirclePlus, Clock3, Disc3, ListMusic, MinusCircle, Share2, UserRound, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CirclePlus, Clock3, Disc3, ListMusic, MinusCircle, Share2, UserRound, X, CircleCheck } from 'lucide-react'
 import type { Track } from '../../types/music'
 import { usePlayerStore } from '../../store/player-store'
 import { SafeImage } from '../common/SafeImage'
 import { openQueuePanel } from '../../lib/open-queue'
-import { addTrackToLikedSongs } from '../../lib/liked-tracks'
+import { isTrackLiked, toggleTrackLiked } from '../../lib/liked-tracks'
 
 interface SongOptionsMenuProps {
   track: Track | null
@@ -12,6 +13,21 @@ interface SongOptionsMenuProps {
 }
 
 export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) {
+  const [menuLiked, setMenuLiked] = useState(() => isTrackLiked(track))
+
+  useEffect(() => {
+    const syncLikedState = () => setMenuLiked(isTrackLiked(track))
+
+    syncLikedState()
+    window.addEventListener('nyxora-liked-changed', syncLikedState)
+    window.addEventListener('storage', syncLikedState)
+
+    return () => {
+      window.removeEventListener('nyxora-liked-changed', syncLikedState)
+      window.removeEventListener('storage', syncLikedState)
+    }
+  }, [track])
+
   const addTrackToQueue = usePlayerStore((state) => state.addTrackToQueue)
 
   if (!open || !track) return null
@@ -62,11 +78,13 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
   }
 
   const items = [
-    
     {
-      icon: CirclePlus,
-      label: 'Add to liked songs',
-      action: () => addTrackToLikedSongs(track),
+      icon: menuLiked ? CircleCheck : CirclePlus,
+      label: menuLiked ? 'Remove from liked songs' : 'Add to liked songs',
+      action: () => {
+        toggleTrackLiked(track)
+        setMenuLiked(isTrackLiked(track))
+      },
     },
 { icon: Share2, label: 'Share', action: shareTrack },
     { icon: CirclePlus, label: 'Add to playlist', action: () => placeholder('Playlist saving coming next') },
