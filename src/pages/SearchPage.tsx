@@ -474,7 +474,7 @@ setQueue,
 
                     {similarSongs.length > 0 && (
                       <div>
-                        <h2 className="mb-4 text-2xl font-black">More like this</h2>
+                        
                         <div className="space-y-5">
                           {similarSongs.map((track) => {
                             const realIndex = songs.findIndex((item) => item.id === track.id)
@@ -523,9 +523,9 @@ setQueue,
               </section>
             )}
 
-            {activeTab === 'playlists' && (
+            {query.trim() && playlists.length > 0 && (
               <section className="mt-6 pb-40">
-                {loading && playlists.length === 0 ? (
+                {false ? (
                   <div className="grid grid-cols-2 gap-4">
                     {Array.from({ length: 6 }).map((_, index) => (
                       <div key={index} className="aspect-square animate-pulse rounded-3xl bg-white/10" />
