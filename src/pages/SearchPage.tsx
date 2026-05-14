@@ -308,7 +308,7 @@ setQueue,
           </div>
         )}
 
-        {error && (
+        {error && mode !== 'focused' && (
           <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100">
             <p className="font-bold">{error}</p>
             {error.includes('403') || error.toLowerCase().includes('quota') || error.toLowerCase().includes('blocked') ? (
@@ -361,7 +361,7 @@ setQueue,
                       />
 
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-2xl font-bold text-white">{track.title}</p>
+                        <p className="truncate text-[23px] font-semibold text-white">{track.title}</p>
                         <p className="mt-1 truncate text-lg text-white/55">
                           Song • {track.artist}
                         </p>
@@ -403,7 +403,7 @@ setQueue,
               ))}
             </section>
 
-            <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1">
+            <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-1">
               <button
                 onClick={() => setActiveTab('songs')}
                 className={`rounded-xl py-2 text-sm font-bold ${
@@ -433,22 +433,22 @@ setQueue,
                 ) : songs.length === 0 ? (
                   <p className="text-white/45">Live results will appear here.</p>
                 ) : (
-                  <div className="space-y-7">
+                  <div className="space-y-4">
                     {topSong && (
                       <div>
-                        <h2 className="mb-4 text-2xl font-black">Top result</h2>
+                        
                         <button
                           onClick={() => playSong(topSong, songs.findIndex((item) => item.id === topSong.id))}
-                          className="flex w-full items-center gap-4 rounded-2xl bg-white/7 p-3 text-left active:scale-[0.99]"
+                          className="flex w-full items-center gap-4 rounded-none bg-transparent p-0 text-left active:scale-[0.99]"
                         >
                           <SafeImage
                             src={topSong.thumbnail}
                             alt={topSong.title}
-                            className="h-24 w-24 shrink-0 rounded-xl object-cover"
+                            className="h-16 w-16 shrink-0 rounded-lg object-cover"
                             loading="eager"
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 text-2xl font-black text-white">
+                            <p className="truncate text-[23px] font-semibold text-white">
                               {topSong.title}
                             </p>
                             <p className="mt-1 truncate text-lg text-white/55">
@@ -488,11 +488,11 @@ setQueue,
                                 <SafeImage
                                   src={track.thumbnail}
                                   alt={track.title}
-                                  className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                                  className="h-16 w-16 shrink-0 rounded-lg object-cover"
                                   loading="eager"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate text-2xl font-bold text-white">
+                                  <p className="truncate text-[23px] font-semibold text-white">
                                     {track.title}
                                   </p>
                                   <p className="mt-1 truncate text-lg text-white/55">
@@ -544,7 +544,7 @@ setQueue,
                         <SafeImage
                           src={playlist.thumbnail}
                           alt={playlist.title}
-                          className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                          className="h-16 w-16 shrink-0 rounded-lg object-cover"
                           loading="eager"
                         />
                         <div className="min-w-0 flex-1">
