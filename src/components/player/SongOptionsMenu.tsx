@@ -13,10 +13,10 @@ interface SongOptionsMenuProps {
 }
 
 export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) {
-  const [menuLiked, setMenuLiked] = useState(() => isTrackLiked(track))
+  const [menuLiked, setMenuLiked] = useState(() => (track ? isTrackLiked(track) : false))
 
   useEffect(() => {
-    const syncLikedState = () => setMenuLiked(isTrackLiked(track))
+    const syncLikedState = () => setMenuLiked(track ? isTrackLiked(track) : false)
 
     syncLikedState()
     window.addEventListener('nyxora-liked-changed', syncLikedState)
@@ -82,8 +82,8 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
       icon: menuLiked ? CircleCheck : CirclePlus,
       label: menuLiked ? 'Remove from liked songs' : 'Add to liked songs',
       action: () => {
-        toggleTrackLiked(track)
-        setMenuLiked(isTrackLiked(track))
+        track && toggleTrackLiked(track)
+        setMenuLiked(track ? isTrackLiked(track) : false)
       },
     },
 { icon: Share2, label: 'Share', action: shareTrack },
