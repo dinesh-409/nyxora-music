@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowDownUp,
+  ArrowLeft,
   Grid2X2,
   Heart,
+  MoreVertical,
+  Play,
   Plus,
   Search,
   Trash2,
 } from 'lucide-react'
 import { SafeImage } from '../components/common/SafeImage'
 import { usePlayerStore } from '../store/player-store'
-import { getLikedTracks } from '../lib/liked-tracks'
+import { getLikedTracks, removeTrackFromLikedSongs } from '../lib/liked-tracks'
 import {
   getSavedPlaylists,
   removePlaylistFromLibrary,
@@ -17,13 +20,14 @@ import {
 } from '../lib/library-playlists'
 import type { Track } from '../types/music'
 
+type LibraryView = 'home' | 'liked'
+
 type LibraryItem =
   | {
       type: 'liked'
       id: string
       title: string
       subtitle: string
-      image?: string
       count: number
     }
   | {
@@ -36,6 +40,7 @@ type LibraryItem =
     }
 
 export function LibraryPage() {
+  const [view, setView] = useState<LibraryView>('home')
   const [likedSongs, setLikedSongs] = useState<Track[]>(() => getLikedTracks())
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>(() => getSavedPlaylists())
   const [activeFilter, setActiveFilter] = useState<'playlists' | 'artists' | 'downloaded'>('playlists')
@@ -77,7 +82,7 @@ export function LibraryPage() {
     })),
   ]
 
-  function playLikedSongs() {
+  function playLikedSongs(startIndex = 0) {
     if (!likedSongs.length) {
       window.dispatchEvent(
         new CustomEvent('nyxora-toast', {
@@ -87,12 +92,24 @@ export function LibraryPage() {
       return
     }
 
-    setQueue(likedSongs, 0, 'Liked Songs')
+    setQueue(likedSongs, startIndex, 'Liked Songs')
     setPlaying(true)
+  }
+
+  function removeLikedTrack(track: Track) {
+    removeTrackFromLikedSongs(track)
+    setLikedSongs(getLikedTracks())
+
+    window.dispatchEvent(
+      new CustomEvent('nyxora-toast', {
+        detail: 'Removed from liked songs',
+      }),
+    )
   }
 
   function removeSavedPlaylist(playlist: SavedPlaylist) {
     removePlaylistFromLibrary(playlist)
+
     window.dispatchEvent(
       new CustomEvent('nyxora-toast', {
         detail: 'Removed from your library',
@@ -100,17 +117,9 @@ export function LibraryPage() {
     )
   }
 
-  function removeLikedSongsPlaylist() {
-    window.dispatchEvent(
-      new CustomEvent('nyxora-toast', {
-        detail: 'Open Liked Songs and remove songs individually',
-      }),
-    )
-  }
-
   function openItem(item: LibraryItem) {
     if (item.type === 'liked') {
-      playLikedSongs()
+      setView('liked')
       return
     }
 
@@ -118,6 +127,117 @@ export function LibraryPage() {
       new CustomEvent('nyxora-toast', {
         detail: 'Playlist opening needs YouTube quota / playlist items',
       }),
+    )
+  }
+
+  if (view === 'liked') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#4d3fc7] via-[#241f42] to-[#121212] px-4 pb-40 pt-5 text-white">
+        <header className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setView('home')}
+            className="rounded-full p-2 active:bg-white/10"
+            aria-label="Back to library"
+          >
+            <ArrowLeft size={34} />
+          </button>
+
+          <button
+            type="button"
+            className="rounded-full p-2 active:bg-white/10"
+            aria-label="Liked songs options"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent('nyxora-toast', {
+                  detail: 'Liked Songs options coming next',
+                }),
+              )
+            }
+          >
+            <MoreVertical size={28} />
+          </button>
+        </header>
+
+        <section className="mt-5">
+          <div className="mx-auto flex h-48 w-48 items-center justify-center bg-gradient-to-br from-purple-700 via-indigo-400 to-emerald-200 shadow-2xl">
+            <Heart size={82} fill="white" className="text-white" />
+          </div>
+
+          <p className="mt-8 text-sm font-bold text-white/80">Playlist</p>
+          <h1 className="mt-2 text-[44px] font-black leading-none">Liked Songs</h1>
+          <p className="mt-3 text-base text-white/70">
+            {likedSongs.length} {likedSongs.length === 1 ? 'song' : 'songs'}
+          </p>
+
+          <div className="mt-7 flex items-center justify-between">
+            <button
+              type="button"
+              className="rounded-full p-2 text-white/70 active:bg-white/10"
+              aria-label="Liked songs menu"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('nyxora-toast', {
+                    detail: 'Liked Songs menu coming next',
+                  }),
+                )
+              }
+            >
+              <MoreVertical size={30} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => playLikedSongs(0)}
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400 text-black shadow-xl active:scale-95"
+              aria-label="Play liked songs"
+            >
+              <Play size={31} fill="black" />
+            </button>
+          </div>
+        </section>
+
+        <section className="mt-8 space-y-5">
+          {likedSongs.length === 0 ? (
+            <div className="rounded-3xl bg-white/8 p-5 text-white/70">
+              Like songs from Search, Mini Player, Full Player, or three dots menu. They will appear here.
+            </div>
+          ) : (
+            likedSongs.map((track, index) => (
+              <div key={`${track.id}-${track.videoId}-${index}`} className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => playLikedSongs(index)}
+                  className="flex min-w-0 flex-1 items-center gap-4 text-left active:scale-[0.99]"
+                >
+                  <SafeImage
+                    src={track.thumbnail}
+                    alt={track.title}
+                    className="h-16 w-16 shrink-0 rounded-md object-cover"
+                    loading="eager"
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xl font-semibold text-white">{track.title}</p>
+                    <p className="mt-1 truncate text-sm text-white/55">
+                      Song • {track.artist}
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => removeLikedTrack(track)}
+                  className="rounded-full p-2 text-white/55 active:bg-white/10"
+                  aria-label="Remove from liked songs"
+                >
+                  <Heart size={23} fill="currentColor" className="text-emerald-400" />
+                </button>
+              </div>
+            ))
+          )}
+        </section>
+      </div>
     )
   }
 
@@ -249,15 +369,15 @@ export function LibraryPage() {
               type="button"
               onClick={() => {
                 if (item.type === 'liked') {
-                  removeLikedSongsPlaylist()
+                  setView('liked')
                 } else {
                   removeSavedPlaylist(item.playlist)
                 }
               }}
               className="rounded-full p-2 text-white/55 active:bg-white/10"
-              aria-label={item.type === 'liked' ? 'Liked songs options' : 'Remove playlist'}
+              aria-label={item.type === 'liked' ? 'Open liked songs' : 'Remove playlist'}
             >
-              <Trash2 size={22} />
+              {item.type === 'liked' ? <MoreVertical size={24} /> : <Trash2 size={22} />}
             </button>
           </div>
         ))}
