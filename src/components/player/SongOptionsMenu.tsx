@@ -127,7 +127,7 @@ export function SongOptionsMenu({ track, open, onClose }: SongOptionsMenuProps) 
                   onClick={item.action}
                   className="flex w-full items-center gap-4 rounded-2xl px-3 py-3 text-left active:bg-white/10"
                 >
-                  <Icon size={24} className="text-white/65" />
+                  <Icon size={24} className={item.label === "Remove from liked songs" ? "text-emerald-400" : "text-white/65"} />
                   <span className="text-[15px] font-semibold">{item.label}</span>
                 </button>
               </div>

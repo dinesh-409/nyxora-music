@@ -213,6 +213,21 @@ setQueue,
     }
   }
 
+  function closeMobileKeyboard() {
+    inputRef.current?.blur()
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    window.setTimeout(() => {
+      inputRef.current?.blur()
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    }, 50)
+  }
+
   function openFocusedSearch() {
     setMode('focused')
   }
@@ -275,14 +290,18 @@ setQueue,
               className="flex min-w-0 flex-1 items-center gap-2 border-l-2 border-emerald-500 px-3 py-2"
               onSubmit={(event) => {
                 event.preventDefault()
-                runSearch(query, true)
+                closeMobileKeyboard()
+              runSearch(query, true)
               }}
             >
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="What do you want to listen to?"
+                inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              placeholder="What do you want to listen to?"
                 className="w-full bg-transparent text-2xl font-medium outline-none placeholder:text-white/45"
               />
 
